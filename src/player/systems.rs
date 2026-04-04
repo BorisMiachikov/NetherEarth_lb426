@@ -1,13 +1,13 @@
 use bevy::prelude::*;
 
-use crate::map::grid::{MapGrid, CELL_SIZE};
+use crate::map::grid::MapGrid;
 
 use super::components::{PlayerScout, ScoutMoveIntent, ScoutMovement};
 
 /// Перемещает скаута согласно ScoutMoveIntent, зажимает по границам карты и высоте.
 pub fn move_scout(
     time: Res<Time>,
-    map: Res<MapGrid>,
+    _map: Res<MapGrid>,
     mut query: Query<(&mut Transform, &mut ScoutMovement, &ScoutMoveIntent), With<PlayerScout>>,
 ) {
     let Ok((mut transform, mut movement, intent)) = query.single_mut() else {
@@ -26,11 +26,7 @@ pub fn move_scout(
         .clamp(movement.min_alt, movement.max_alt);
     transform.translation.y = movement.altitude;
 
-    // Зажимаем по границам карты
-    let max_x = map.width as f32 * CELL_SIZE;
-    let max_z = map.height as f32 * CELL_SIZE;
-    transform.translation.x = transform.translation.x.clamp(0.0, max_x);
-    transform.translation.z = transform.translation.z.clamp(0.0, max_z);
+    // Границы и коллизия со структурами обрабатываются в map::collision::scout_collision
 }
 
 /// Спавн скаута (цветной куб-заглушка).

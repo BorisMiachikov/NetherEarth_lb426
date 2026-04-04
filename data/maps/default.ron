@@ -2,8 +2,19 @@
     width: 64,
     height: 64,
     cells: [],
-    player_spawn: (x: 10, y: 10),
-    enemy_warbase: (x: 54, y: 54),
-    player_warbase: (x: 10, y: 10),
-    factories: [],
+    player_spawn: (x: 5, y: 5),
+    factories: [
+        (x: 20, y: 15, factory_type: General,     team: Neutral),
+        (x: 15, y: 30, factory_type: Chassis,      team: Neutral),
+        (x: 30, y: 10, factory_type: Cannon,       team: Neutral),
+        (x: 45, y: 20, factory_type: Missile,      team: Neutral),
+        (x: 25, y: 45, factory_type: Phasers,      team: Neutral),
+        (x: 50, y: 35, factory_type: Electronics,  team: Neutral),
+        (x: 35, y: 52, factory_type: Nuclear,      team: Neutral),
+        (x: 40, y: 40, factory_type: General,      team: Neutral),
+    ],
+    warbases: [
+        (x: 8,  y: 8,  team: Player),
+        (x: 56, y: 56, team: Enemy),
+    ],
 )

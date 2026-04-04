@@ -6,7 +6,14 @@ pub const CELL_SIZE: f32 = 1.0;
 pub enum CellType {
     Open,
     Blocked,
-    Structure,
+    /// Занята структурой (entity-владелец).
+    Structure(Entity),
+}
+
+impl CellType {
+    pub fn is_passable(self) -> bool {
+        matches!(self, CellType::Open)
+    }
 }
 
 /// Игровая сетка. Ячейки лежат в плоскости XZ.
@@ -65,7 +72,7 @@ impl MapGrid {
     }
 
     pub fn is_passable(&self, x: u32, y: u32) -> bool {
-        matches!(self.get(x, y), Some(CellType::Open | CellType::Structure))
+        self.get(x, y).map(|c| c.is_passable()).unwrap_or(false)
     }
 
     pub fn world_bounds(&self) -> (Vec3, Vec3) {
@@ -82,6 +89,10 @@ impl MapGrid {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn dummy_entity() -> Entity {
+        Entity::from_raw_u32(42).unwrap()
+    }
 
     #[test]
     fn grid_world_roundtrip() {
@@ -105,5 +116,20 @@ mod tests {
         grid.set(5, 7, CellType::Blocked);
         assert_eq!(grid.get(5, 7), Some(CellType::Blocked));
         assert_eq!(grid.get(5, 8), Some(CellType::Open));
+    }
+
+    #[test]
+    fn structure_cell_not_passable() {
+        let mut grid = MapGrid::new(64, 64);
+        grid.set(3, 3, CellType::Structure(dummy_entity()));
+        assert!(!grid.is_passable(3, 3));
+        assert!(grid.is_passable(3, 4));
+    }
+
+    #[test]
+    fn blocked_not_passable() {
+        let mut grid = MapGrid::new(64, 64);
+        grid.set(1, 1, CellType::Blocked);
+        assert!(!grid.is_passable(1, 1));
     }
 }

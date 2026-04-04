@@ -34,7 +34,7 @@ pub struct ResourceChanged {
     pub new_total: i32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ResourceType {
     General,
     Chassis,
