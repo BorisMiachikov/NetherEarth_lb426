@@ -1,0 +1,26 @@
+[
+    (
+        weapon_type: Cannon,
+        damage: 15.0,
+        range: 10.0,
+        reload_time: 1.2,
+        cost_resource: 10,
+        cost_general: 5,
+    ),
+    (
+        weapon_type: Missile,
+        damage: 45.0,
+        range: 30.0,
+        reload_time: 3.0,
+        cost_resource: 25,
+        cost_general: 10,
+    ),
+    (
+        weapon_type: Phasers,
+        damage: 8.0,
+        range: 6.0,
+        reload_time: 0.15,
+        cost_resource: 30,
+        cost_general: 15,
+    ),
+]

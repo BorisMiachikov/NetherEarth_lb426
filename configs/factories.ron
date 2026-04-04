@@ -1,0 +1,9 @@
+[
+    ( factory_type: General,     resource_per_day: 5, general_per_day: 2 ),
+    ( factory_type: Chassis,     resource_per_day: 5, general_per_day: 2 ),
+    ( factory_type: Cannon,      resource_per_day: 5, general_per_day: 2 ),
+    ( factory_type: Missile,     resource_per_day: 5, general_per_day: 2 ),
+    ( factory_type: Phasers,     resource_per_day: 5, general_per_day: 2 ),
+    ( factory_type: Electronics, resource_per_day: 5, general_per_day: 2 ),
+    ( factory_type: Nuclear,     resource_per_day: 5, general_per_day: 2 ),
+]

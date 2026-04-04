@@ -1,0 +1,9 @@
+(
+    width: 64,
+    height: 64,
+    cells: [],
+    player_spawn: (x: 10, y: 10),
+    enemy_warbase: (x: 54, y: 54),
+    player_warbase: (x: 10, y: 10),
+    factories: [],
+)
