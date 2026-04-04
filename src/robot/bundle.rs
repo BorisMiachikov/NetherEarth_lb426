@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{picking::mesh_picking::MeshPickingPlugin, prelude::*};
 
 use crate::core::{Health, Team};
 
@@ -88,6 +88,8 @@ pub fn spawn_robot(
         crate::movement::velocity::Velocity::default(),
         crate::command::command::RobotCommand::Idle,
         crate::command::queue::CommandQueue::default(),
+        crate::movement::steering::CurrentPath::default(),
+        Pickable::default(),
         Mesh3d(mesh),
         MeshMaterial3d(mat),
         Transform::from_translation(pos),

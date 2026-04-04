@@ -34,6 +34,7 @@ impl Plugin for AppPlugin {
             }),
         )
         .add_plugins(EguiPlugin::default())
+        .add_plugins(MeshPickingPlugin)
         .init_state::<AppState>()
         .add_plugins((
             CorePlugin,
