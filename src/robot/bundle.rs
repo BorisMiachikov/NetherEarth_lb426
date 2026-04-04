@@ -1,4 +1,5 @@
 use bevy::{picking::mesh_picking::MeshPickingPlugin, prelude::*};
+use crate::combat::WeaponCooldowns;
 
 use crate::core::{Health, Team};
 
@@ -94,6 +95,7 @@ pub fn spawn_robot(
         MeshMaterial3d(mat),
         Transform::from_translation(pos),
     ));
+    entity.insert(WeaponCooldowns::default());
 
     // Опциональные модули
     if blueprint.has_electronics {
