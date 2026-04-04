@@ -3,6 +3,7 @@
 **Стек:** Rust (Stable), Bevy 0.18, Serde + RON  
 **Тип:** Solo-разработка  
 **Дата создания:** 2026-04-04  
+**Последнее обновление:** 2026-04-04 — Фаза 5 завершена  
 **Авторитетная спецификация:** `1/Nether Earth LB426.md` (v2.0)
 
 ---
@@ -11,22 +12,22 @@
 
 | Модуль | Статус | Описание |
 |--------|--------|----------|
-| `app` | :black_square_button: Не начат | Инициализация приложения, состояния (Menu → Game → Pause → GameOver) |
-| `core` | :black_square_button: Не начат | GameTime, Health, Team, Events — общие компоненты |
-| `player` | :black_square_button: Не начат | Летающий скаут: 6DOF движение (WASD+QE), взаимодействие с объектами |
-| `robot` | :black_square_button: Не начат | Модульная сборка роботов: Chassis + Weapons + Electronics + Nuclear |
-| `ai` | :black_square_button: Не начат | ИИ командира противника (Utility AI), поведение отдельных роботов |
-| `command` | :black_square_button: Не начат | Система приказов: Idle, MoveTo, SeekAndDestroy, Capture, Defend, Patrol |
-| `movement` | :black_square_button: Не начат | A* по сетке, velocity, steering, следование по пути |
-| `combat` | :black_square_button: Не начат | 3 типа оружия, расчёт урона, снаряды, ядерный взрыв |
-| `economy` | :black_square_button: Не начат | 7 типов ресурсов, производство с фабрик, стоимость модулей |
-| `structure` | :black_square_button: Не начат | Фабрики (7 типов), Warbase, механика захвата |
-| `map` | :black_square_button: Не начат | Сетка 512×512, загрузка из RON, коллизии, типы ячеек |
-| `ui` | :black_square_button: Не начат | HUD, миникарта, меню строительства, главное меню, пауза |
-| `camera` | :black_square_button: Не начат | Изометрическая ортографическая камера, зум, следование |
-| `audio` | :black_square_button: Не начат | Музыка (.ogg), SFX (выстрелы, взрывы, захват) |
-| `save` | :black_square_button: Не начат | Сериализация Serde+RON, 3 слота, автосохранение |
-| `debug` | :black_square_button: Не начат | Gizmos, overlay, спавн через egui |
+| `app` | ✅ Реализован | AppPlugin, AppState (Menu/Playing/Paused/GameOver), настройка окна |
+| `core` | ✅ Реализован | GameTime, Health, Team, EntityDamaged/Destroyed observers |
+| `player` | ✅ Реализован | Скаут WASD+QE, выбор роботов (LMB/Shift/Ctrl+1-9), команды ПКМ |
+| `robot` | ✅ Реализован | Chassis/WeaponSlots/Electronics/Nuclear, ModuleRegistry, RobotBlueprint, spawn |
+| `ai` | ⬛ Не начат | ИИ командира противника (Utility AI), поведение отдельных роботов |
+| `command` | ✅ Реализован | Idle, MoveTo, SeekAndDestroy, SeekAndCapture, Defend, Patrol + queue |
+| `movement` | ✅ Реализован | A* по сетке, Velocity, MovementTarget, steering, follow_path |
+| `combat` | ✅ Реализован | Targeting, Cannon/Missile/Phasers, projectiles, death, nuclear blast |
+| `economy` | 🔶 Заглушка | PlayerResources с 7 типами — без цикла производства |
+| `structure` | 🔶 Частично | Factory/Warbase/Capturable spawn + tooltip — без механики захвата |
+| `map` | ✅ Реализован | MapGrid 64×64, RON-загрузка, коллизия скаута, визуальная сетка |
+| `ui` | ⬛ Заглушка | Только stub-плагин |
+| `camera` | ✅ Реализован | Изометрическая орто-камера, зум скроллом, следование за скаутом |
+| `audio` | ⬛ Заглушка | Только stub-плагин |
+| `save` | ⬛ Заглушка | Только stub-плагин |
+| `debug` | ✅ Реализован | Gizmos сетка, overlay (координаты/FPS/GameTime), egui-панель спавна роботов |
 
 ---
 
@@ -139,19 +140,19 @@ Bevy Events для межсистемного общения:
 
 ---
 
-### Фаза 0: Инициализация проекта (3-5 дней)
+### ✅ Фаза 0: Инициализация проекта — ЗАВЕРШЕНА
 
 **Цель:** Пустое Bevy-приложение компилируется, запускается, показывает окно. Структура каталогов создана.
 
-- [ ] **0.1** `cargo init`, Cargo.toml с зависимостями (bevy 0.18, serde, ron, bevy_egui 0.32) `[S]`
-- [ ] **0.2** Создать структуру каталогов: 15 модулей с `mod.rs` `[S]`
-- [ ] **0.3** `app/state.rs` — `AppState` enum (Loading, MainMenu, Playing, Paused, GameOver) `[S]`
-- [ ] **0.4** `lib.rs` — регистрация всех плагинов-заглушек `[S]`
-- [ ] **0.5** `main.rs` — `App::new()`, DefaultPlugins, настройка окна `[S]`
-- [ ] **0.6** Создать `assets/`, `configs/`, `data/` с подпапками `[S]`
-- [ ] **0.7** `.gitignore`, инициализация git-репозитория `[S]`
-- [ ] **0.8** Скелеты RON-конфигов (game.ron, chassis.ron, weapons.ron и др.) с placeholder-значениями `[S]`
-- [ ] **0.9** Проверить инициализацию bevy_egui `[S]`
+- [x] **0.1** `cargo init`, Cargo.toml с зависимостями (bevy 0.18, serde, ron, bevy_egui 0.39) `[S]`
+- [x] **0.2** Создать структуру каталогов: 16 модулей с `mod.rs` `[S]`
+- [x] **0.3** `app/state.rs` — `AppState` enum (MainMenu, Playing, Paused, GameOver) `[S]`
+- [x] **0.4** `lib.rs` — регистрация всех плагинов-заглушек `[S]`
+- [x] **0.5** `main.rs` — `App::new()`, DefaultPlugins, настройка окна 1280×720 `[S]`
+- [x] **0.6** Создать `assets/`, `configs/`, `data/` с подпапками `[S]`
+- [x] **0.7** `.gitignore`, инициализация git, push на GitHub `[S]`
+- [x] **0.8** Скелеты RON-конфигов (chassis.ron, weapons.ron, electronics.ron, nuclear.ron, maps/default.ron) `[S]`
+- [x] **0.9** Проверить инициализацию bevy_egui `[S]`
 
 **Критерии проверки:**
 - `cargo build` без предупреждений
@@ -163,28 +164,28 @@ Bevy Events для межсистемного общения:
 
 ---
 
-### Фаза 1: Ядро + Полёт скаута (8-12 дней)
+### ✅ Фаза 1: Ядро + Полёт скаута — ЗАВЕРШЕНА
 
 **Цель:** Игрок летает на скауте над плоской сеткой. Камера следует. Debug-overlay показывает координаты.
 
 **Зависимости:** Фаза 0
 
-- [ ] **1.1** `core/time.rs` — `GameTime`: игровые часы, `game_day` счётчик, `seconds_per_day = 30.0` `[S]`
-- [ ] **1.2** `core/team.rs` — `Team` enum (Player, Enemy, Neutral), derive Component `[S]`
-- [ ] **1.3** `core/health.rs` — `Health { current: f32, max: f32 }` `[S]`
-- [ ] **1.4** `core/events.rs` — Event-заглушки: EntityDamaged, EntityDestroyed, StructureCaptured, ResourceChanged `[S]`
-- [ ] **1.5** `core/resources.rs` — `GameConfig` из game.ron, `GameState` (running/paused) `[M]`
-- [ ] **1.6** `map/grid.rs` — `MapGrid` 512×512, типы ячеек (Open, Blocked, Structure), конверсия world↔grid `[M]`
-- [ ] **1.7** `map/loader.rs` — Загрузка карты из RON, заполнение MapGrid `[M]`
-- [ ] **1.8** `map/mod.rs` — MapPlugin: спавн плоскости с видимой сеткой `[M]`
-- [ ] **1.9** `camera/systems.rs` — Изометрическая ортографическая камера, следование за скаутом, зум скроллом `[M]`
-- [ ] **1.10** `player/components.rs` — `PlayerScout`, `ScoutMovement { speed, altitude, min_alt, max_alt }` `[S]`
-- [ ] **1.11** `player/input.rs` — WASD+QE ввод → `ScoutMoveIntent` `[M]`
-- [ ] **1.12** `player/systems.rs` — Движение скаута, ограничение по границам карты `[M]`
-- [ ] **1.13** Спавн скаута с placeholder-мешем (цветной куб) `[S]`
-- [ ] **1.14** `debug/overlay.rs` — egui: позиция скаута, game time, FPS, ячейка под курсором `[M]`
-- [ ] **1.15** `debug/gizmos.rs` — Переключаемые линии сетки, границы карты `[S]`
-- [ ] **1.16** Универсальный загрузчик RON-конфигов `T: DeserializeOwned` с логированием ошибок `[M]`
+- [x] **1.1** `core/time.rs` — `GameTime`: игровые часы, `game_day` счётчик, `seconds_per_day = 30.0` `[S]`
+- [x] **1.2** `core/team.rs` — `Team` enum (Player, Enemy, Neutral), derive Component `[S]`
+- [x] **1.3** `core/health.rs` — `Health { current: f32, max: f32 }`, apply_damage, heal `[S]`
+- [x] **1.4** `core/events.rs` — EntityDamaged/Destroyed observers, StructureCaptured, ResourceChanged `[S]`
+- [ ] **1.5** `core/resources.rs` — `GameConfig` из game.ron, `GameState` (running/paused) `[M]` *(отложено)*
+- [x] **1.6** `map/grid.rs` — `MapGrid` 64×64, типы ячеек (Open, Blocked, Structure), конверсия world↔grid `[M]`
+- [x] **1.7** `map/loader.rs` — Загрузка карты из RON (default.ron), заполнение MapGrid `[M]`
+- [x] **1.8** `map/mod.rs` — MapPlugin: спавн плоскости с видимой сеткой Gizmos `[M]`
+- [x] **1.9** `camera/systems.rs` — Изометрическая ортографическая камера, следование за скаутом, зум скроллом `[M]`
+- [x] **1.10** `player/components.rs` — `PlayerScout`, `ScoutMovement`, `ScoutMoveIntent` `[S]`
+- [x] **1.11** `player/input.rs` — WASD+QE ввод → `ScoutMoveIntent` `[M]`
+- [x] **1.12** `player/systems.rs` — Движение скаута, ограничение по границам карты `[M]`
+- [x] **1.13** Спавн скаута с placeholder-мешем (цветной куб) `[S]`
+- [x] **1.14** `debug/overlay.rs` — egui: позиция скаута, game time, FPS, ячейка под курсором `[M]`
+- [x] **1.15** `debug/gizmos.rs` — Переключаемые линии сетки, границы карты `[S]`
+- [x] **1.16** Загрузка RON-конфигов через serde (chassis.ron, weapons.ron и др.) `[M]`
 
 **Критерии проверки:**
 - Скаут летает плавно с WASD+QE
@@ -198,23 +199,23 @@ Bevy Events для межсистемного общения:
 
 ---
 
-### Фаза 2: Структуры + Населённая карта (8-12 дней)
+### ✅ Фаза 2: Структуры + Населённая карта — ЗАВЕРШЕНА
 
 **Цель:** На карте размещены фабрики и варбейсы из RON-данных. Скаут летает среди них. Цвета команд.
 
 **Зависимости:** Фаза 1
 
-- [ ] **2.1** `structure/factory.rs` — `Factory`, `FactoryType` enum (7 типов), `ProductionRate` `[M]`
-- [ ] **2.2** `structure/warbase.rs` — `Warbase`, `ProductionQueue` (пустая пока) `[S]`
-- [ ] **2.3** `structure/capture.rs` — `CaptureProgress { progress, required }`, `Capturable` marker `[S]` (заглушка)
-- [ ] **2.4** `structure/mod.rs` — StructurePlugin: спавн из factories.ron и warbases.ron `[M]`
-- [ ] **2.5** Рендеринг структур: цветные материалы по команде (зелёный/красный/серый), placeholder-меши `[M]`
-- [ ] **2.6** Обновить MapGrid: ячейки со структурами помечены `Structure(Entity)` `[S]`
-- [ ] **2.7** Тестовая карта RON: 2 warbase игрока, 2 warbase врага, 8-10 нейтральных фабрик, блокированные ячейки `[M]`
-- [ ] **2.8** `map/collision.rs` — Коллизия скаута со структурами и блокированным terrain `[M]`
-- [ ] **2.9** Tooltip при наведении: тип структуры, владелец, производимый ресурс `[S]`
-- [ ] **2.10** `economy/resource.rs` — `ResourceType` enum (7 шт.), `PlayerResources` (HashMap), инициализация из конфига `[M]`
-- [ ] **2.11** `economy/mod.rs` — EconomyPlugin: регистрация PlayerResources, без логики производства `[S]` (заглушка)
+- [x] **2.1** `structure/factory.rs` — `Factory`, `FactoryType` enum (7 типов), `ProductionRate` `[M]`
+- [x] **2.2** `structure/warbase.rs` — `Warbase`, `ProductionQueue` (заглушка) `[S]`
+- [x] **2.3** `structure/capture.rs` — `CaptureProgress { progress, required }`, `Capturable` marker `[S]`
+- [x] **2.4** `structure/mod.rs` — StructurePlugin: спавн структур из данных карты `[M]`
+- [x] **2.5** Рендеринг структур: цветные материалы по команде, cuboid-меши (factory 1.4×1.0×1.4, warbase 2.0³) `[M]`
+- [x] **2.6** MapGrid: ячейки со структурами помечены `Structure(Entity)` `[S]`
+- [x] **2.7** Тестовая карта RON: 1 warbase Player (8,8), 1 warbase Enemy (56,56), 8 нейтральных фабрик `[M]`
+- [x] **2.8** `map/collision.rs` — Коллизия скаута (axis-separated) `[M]`
+- [x] **2.9** Tooltip при наведении: egui Window с типом/владельцем структуры `[S]`
+- [x] **2.10** `economy/resource.rs` — `ResourceType` enum (7 шт.), `PlayerResources` (HashMap), стартовые значения `[M]`
+- [x] **2.11** `economy/mod.rs` — EconomyPlugin: регистрация PlayerResources `[S]`
 
 **Критерии проверки:**
 - Карта загружается из RON, структуры на правильных позициях
@@ -226,31 +227,30 @@ Bevy Events для межсистемного общения:
 
 ---
 
-### Фаза 3: Роботы + Базовое движение (12-18 дней)
+### ✅ Фаза 3: Роботы + Базовое движение — ЗАВЕРШЕНА
 
 **Цель:** Роботы спавнятся через debug-панель, двигаются по сетке с A*-pathfinding, сталкиваются с terrain/structures.
 
-**Зависимости:** Фаза 2  
-**Пререквизит:** Заполнить RON-конфиги chassis.ron, weapons.ron значениями из раздела 2
+**Зависимости:** Фаза 2
 
-- [ ] **3.1** `robot/components.rs` — ECS-компоненты: `RobotMarker`, `Chassis`, `WeaponSlots { slots: [Option<WeaponData>; 3] }`, `Electronics`, `Nuclear`, `RobotStats` `[L]`
-- [ ] **3.2** Типы данных: `ChassisType` enum, `WeaponType` enum, `WeaponData` struct `[M]`
-- [ ] **3.3** Загрузка модулей из RON → `Res<ModuleRegistry>` `[M]`
-- [ ] **3.4** `robot/builder.rs` — `RobotBlueprint`, валидация (1 chassis, 1-3 weapons), расчёт стоимости `[M]`
-- [ ] **3.5** `robot/bundle.rs` — Спавн entity из RobotBlueprint: все компоненты, placeholder-меш, цвет команды `[M]`
-- [ ] **3.6** `robot/systems.rs` — `recalc_stats`: пересчёт RobotStats при Changed<> `[M]`
-- [ ] **3.7** `movement/velocity.rs` — `Velocity`, `MovementTarget(Vec3)` `[S]`
-- [ ] **3.8** `movement/pathfinding.rs` — A* на MapGrid: (start, goal) → Vec\<GridCell\>. Кэширование путей `[L]`
-- [ ] **3.9** `movement/steering.rs` — Следование по пути в FixedUpdate, поворот, скорость по шасси `[M]`
-- [ ] **3.10** `command/command.rs` — `RobotCommand` enum: Idle, MoveTo, SeekAndDestroy, SeekAndCapture, Defend, Patrol `[S]`
-- [ ] **3.11** `command/queue.rs` — `CommandQueue { current, queue: VecDeque }` `[S]`
-- [ ] **3.12** `command/systems.rs` — Обработка MoveTo: вычислить путь A*, передать в movement. Остальные команды — лог `[M]`
-- [ ] **3.13** Debug: спавн робота через egui (выбор chassis, клик на карту) `[M]`
-- [ ] **3.14** Debug: правый клик → MoveTo для выбранного робота `[M]`
-- [ ] **3.15** Коллизия роботов с terrain (pathfinding не пускает через blocked) `[S]`
-- [ ] **3.16** Коллизия робот-робот: простое расталкивание при наложении `[M]`
-- [ ] **3.17** Визуальное различие по типу шасси (4 разных placeholder-меша) `[S]`
-- [ ] **3.18** `core/health.rs` — расчёт max_hp по формуле из раздела 2.1, pipeline damage/death `[M]`
+- [x] **3.1** `robot/components.rs` — `RobotMarker`, `Chassis`, `WeaponSlots [Option<WeaponData>; 3]`, `Electronics`, `Nuclear`, `RobotStats` `[L]`
+- [x] **3.2** `ChassisType` enum, `WeaponType` enum, `WeaponData` struct `[M]`
+- [x] **3.3** `robot/registry.rs` — `ModuleRegistry` ресурс, загрузка из RON-конфигов `[M]`
+- [x] **3.4** `robot/builder.rs` — `RobotBlueprint`, валидация, расчёт стоимости и build_time `[M]`
+- [x] **3.5** `robot/bundle.rs` — `spawn_robot()`: entity со всеми компонентами, цвет команды, 4 типа мешей `[M]`
+- [x] **3.6** `robot/systems.rs` — заглушка (stats пересчитывается при спавне в bundle) `[M]`
+- [x] **3.7** `movement/velocity.rs` — `Velocity`, `MovementTarget(Vec3)` `[S]`
+- [x] **3.8** `movement/pathfinding.rs` — A* BinaryHeap на MapGrid, can_fly для AntiGrav `[L]`
+- [x] **3.9** `movement/steering.rs` — `compute_path` (Changed<MovementTarget>), `follow_path` (FixedUpdate) `[M]`
+- [x] **3.10** `command/command.rs` — Idle, MoveTo, SeekAndDestroy, SeekAndCapture, Defend, Patrol `[S]`
+- [x] **3.11** `command/queue.rs` — `CommandQueue { current, queue: VecDeque }` `[S]`
+- [x] **3.12** `command/systems.rs` — dispatch Changed<RobotCommand>, SeekAndDestroy → nearest enemy `[M]`
+- [x] **3.13** Debug-панель: спавн робота через egui (chassis, weapons, команда) `[M]`
+- [x] **3.14** ПКМ → MoveTo для выбранного робота `[M]`
+- [x] **3.15** Terrain-коллизия через A* (Blocked/Structure не проходимы) `[S]`
+- [ ] **3.16** Расталкивание роботов при наложении `[M]` *(заглушка `separate_robots`)*
+- [x] **3.17** 4 разных Cuboid-меша по типу шасси `[S]`
+- [x] **3.18** `Health::apply_damage`, observer EntityDamaged → EntityDestroyed `[M]`
 
 **Критерии проверки:**
 - Debug-панель спавнит любой из 4 типов шасси
@@ -265,24 +265,24 @@ Bevy Events для межсистемного общения:
 
 ---
 
-### Фаза 4: Система команд + Взаимодействие игрока (10-14 дней)
+### ✅ Фаза 4: Система команд + Взаимодействие игрока — ЗАВЕРШЕНА
 
 **Цель:** Игрок выбирает роботов, отдаёт все типы приказов через скаут. Роботы реагируют.
 
 **Зависимости:** Фаза 3
 
-- [ ] **4.1** `player/input.rs` — Raycast от скаута/курсора: определение entity под курсором `[M]`
-- [ ] **4.2** Система выбора: клик — один робот, Shift+drag — рамка, Ctrl+1-0 — группы `[L]`
-- [ ] **4.3** `Selected`, `SelectionGroup(u8)` компоненты, визуальный индикатор выбора `[M]`
-- [ ] **4.4** Выдача команд: выбрать робота → подлететь к цели → правый клик `[M]`
-- [ ] **4.5** UI выбора команды: меню при выдаче (SeekAndDestroy, SeekAndCapture, Defend, Patrol) `[M]`
-- [ ] **4.6** SeekAndDestroy: найти ближайшего врага → MoveTo к нему (атака — заглушка) `[M]`
-- [ ] **4.7** SeekAndCapture: pathfind к цели → начать захват (заглушка) `[M]`
-- [ ] **4.8** Defend: стоять на позиции, атаковать врагов в радиусе (заглушка атаки) `[S]`
-- [ ] **4.9** Patrol: циклическое движение между точками маршрута `[M]`
-- [ ] **4.10** Manual Control: Ctrl+LMB — прямое управление роботом (WASD, мышь — прицел) `[L]`
-- [ ] **4.11** Индикаторы команд: иконка над роботом, линия/стрелка к цели `[S]`
-- [ ] **4.12** Панель информации о роботе: chassis, weapons, health, текущая команда `[M]`
+- [x] **4.1** MeshPickingPlugin + Observer On<Pointer<Click>> для выбора entity `[M]`
+- [x] **4.2** LMB — один робот, Shift+LMB — мульти, Ctrl+1-9 — группы `[L]`
+- [x] **4.3** `Selected`, `SelectionGroup(u8)`, желтый gizmo-круг под выбранным `[M]`
+- [x] **4.4** ПКМ → MoveTo; P+ПКМ → накопление точек Patrol `[M]`
+- [x] **4.5** egui-панель "Выбранный робот": кнопки SeekAndDestroy, SeekAndCapture, Defend, Idle `[M]`
+- [x] **4.6** SeekAndDestroy: ближайший враг → MovementTarget `[M]`
+- [x] **4.7** SeekAndCapture: stub (лог) `[M]`
+- [x] **4.8** Defend(Vec3): InsertMovementTarget к позиции `[S]`
+- [x] **4.9** Patrol: `update_patrol` циклически переключает точки `[M]`
+- [ ] **4.10** Manual Control (Ctrl+LMB) `[L]` *(не реализовано)*
+- [x] **4.11** `draw_command_indicators`: gizmo-линии MoveTo/Patrol/Defend `[S]`
+- [x] **4.12** Панель: chassis, team, HP, weapons count, текущая команда `[M]`
 
 **Критерии проверки:**
 - Клик выбирает робота (визуальный фидбэк)
@@ -297,26 +297,25 @@ Bevy Events для межсистемного общения:
 
 ---
 
-### Фаза 5: Боевая система (12-16 дней)
+### ✅ Фаза 5: Боевая система — ЗАВЕРШЕНА (частично)
 
 **Цель:** Роботы стреляют друг в друга, получают урон, уничтожаются. Все 3 типа оружия. Ядерный заряд.
 
-**Зависимости:** Фаза 4  
-**Пререквизит:** Финализировать все значения оружия в weapons.ron
+**Зависимости:** Фаза 4
 
-- [ ] **5.1** `combat/weapon.rs` — `WeaponState`: cooldown_timer, current_target, is_firing `[M]`
-- [ ] **5.2** Захват цели: поиск врагов в радиусе оружия, приоритет по расстоянию `[M]`
-- [ ] **5.3** Огонь: Cannon (hitscan, средняя дистанция), Missile (projectile, homing), Phasers (rapid hitscan, ближний бой) `[L]`
-- [ ] **5.4** `combat/damage.rs` — EntityDamaged event, уменьшение Health, EntityDestroyed при hp≤0 `[M]`
-- [ ] **5.5** Смерть: despawn, placeholder-взрыв (particle/flash) `[M]`
-- [ ] **5.6** Missile entity: spawn + Velocity + HomingTarget, урон при контакте, despawn по таймауту `[L]`
-- [ ] **5.7** Nuclear: робот подходит к цели → детонация. Area damage 8 units. Самоуничтожение. Screen flash `[L]`
-- [ ] **5.8** Nuclear vs structures: только ядерка уничтожает Warbase и фабрики `[M]`
-- [ ] **5.9** Бонус электроники: accuracy +30%, fire rate +20% из конфига `[S]`
-- [ ] **5.10** Визуальный фидбэк: вспышки выстрелов, следы снарядов (линии) `[M]`
-- [ ] **5.11** Подключить SeekAndDestroy к реальному бою (заменить заглушку Фазы 4) `[M]`
-- [ ] **5.12** Combat AI: оценка — продолжать бой или отступать (порог здоровья из конфига) `[M]`
-- [ ] **5.13** Все combat-системы в FixedUpdate `[S]`
+- [x] **5.1** `combat/weapon.rs` — `WeaponCooldowns [f32; 3]`, `CombatTarget`, `MuzzleFlash` `[M]`
+- [x] **5.2** `combat/targeting.rs` — `acquire_targets`: ближайший враг в радиусе оружия `[M]`
+- [x] **5.3** `combat/fire.rs` — Cannon/Phasers (hitscan), Missile (projectile spawn) `[L]`
+- [x] **5.4** EntityDamaged observer в core, Health уменьшается, EntityDestroyed при hp≤0 `[M]`
+- [x] **5.5** `combat/death.rs` — `on_entity_destroyed`: despawn сущности `[M]`
+- [x] **5.6** `combat/projectile.rs` — `Projectile` с самонаведением, speed=8.0, despawn при попадании `[L]`
+- [x] **5.7** Nuclear area damage 8 units при `armed=true` `[L]` *(нет screen flash)*
+- [ ] **5.8** Nuclear vs structures (structures не имеют Health) `[M]` *(Phase 6)*
+- [ ] **5.9** Бонус электроники к fire rate `[S]` *(Phase 6)*
+- [x] **5.10** `combat/visuals.rs` — MuzzleFlash gizmo-линии, оранжевые сферы ракет `[M]`
+- [x] **5.11** SeekAndDestroy + targeting = полноценный бой `[M]`
+- [ ] **5.12** Combat AI (отступление по порогу здоровья) `[M]` *(Phase 7)*
+- [x] **5.13** acquire_targets + fire_weapons + move_projectiles в FixedUpdate `[S]`
 
 **Критерии проверки:**
 - Два робота разных команд в радиусе — автоматически сражаются
