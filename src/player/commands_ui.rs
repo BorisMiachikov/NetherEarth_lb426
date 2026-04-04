@@ -65,10 +65,11 @@ pub fn right_click_move(
 pub fn robot_info_panel(
     mut contexts: EguiContexts,
     selection: Res<SelectionState>,
-    robots: Query<(&RobotCommand, &crate::core::Health, &crate::robot::components::Chassis,
-                   &crate::robot::components::WeaponSlots, &Team), With<Selected>>,
-    enemies: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
-    mut robot_cmds: Query<&mut RobotCommand, (With<RobotMarker>, With<Selected>)>,
+    mut robots: Query<
+        (&mut RobotCommand, &crate::core::Health, &crate::robot::components::Chassis,
+         &crate::robot::components::WeaponSlots, &Team),
+        With<Selected>,
+    >,
     cmd_ui: Res<CommandUiState>,
 ) -> Result {
     if selection.selected.is_empty() {
@@ -77,59 +78,68 @@ pub fn robot_info_panel(
 
     let ctx = contexts.ctx_mut()?;
 
+    // Собираем данные для отображения и список нажатых кнопок
+    let mut new_cmd: Option<RobotCommand> = None;
+    let (display_info, show_patrol) = if let Ok((cmd, health, chassis, weapons, team)) = robots.single() {
+        (
+            Some((
+                format!("Шасси: {:?}", chassis.chassis_type),
+                format!("Команда: {team:?}"),
+                format!("HP: {:.0} / {:.0}", health.current, health.max),
+                format!("Оружия: {}", weapons.count()),
+                format!("Приказ: {}", cmd_label(&cmd)),
+            )),
+            cmd_ui.show_patrol_hint,
+        )
+    } else {
+        (None, false)
+    };
+
     egui::Window::new("Выбранный робот")
         .default_pos([10.0, 350.0])
         .resizable(false)
         .show(ctx, |ui| {
-            // Показываем только первого выбранного
-            if let Ok((cmd, health, chassis, weapons, team)) = robots.single() {
-                ui.label(format!("Шасси: {:?}", chassis.chassis_type));
-                ui.label(format!("Команда: {team:?}"));
-                ui.label(format!("HP: {:.0} / {:.0}", health.current, health.max));
-                ui.label(format!("Оружия: {}", weapons.count()));
+            if let Some((chassis_s, team_s, hp_s, weapons_s, cmd_s)) = &display_info {
+                ui.label(chassis_s);
+                ui.label(team_s);
+                ui.label(hp_s);
+                ui.label(weapons_s);
                 ui.separator();
-                ui.label(format!("Приказ: {}", cmd_label(cmd)));
+                ui.label(cmd_s);
                 ui.separator();
 
-                // Кнопки команд
-                if ui.button("MoveTo (ПКМ)").clicked() {
-                    ui.close_menu();
-                }
                 if ui.button("SeekAndDestroy").clicked() {
-                    // Найти ближайшего врага
-                    if let Ok((mut robot_cmd, _, _, _, my_team)) = robots.single() {
-                        // найдём через отдельный запрос ниже
-                    }
-                    for mut cmd in &mut robot_cmds {
-                        *cmd = RobotCommand::SeekAndDestroy(None);
-                    }
+                    new_cmd = Some(RobotCommand::SeekAndDestroy(None));
                 }
                 if ui.button("SeekAndCapture").clicked() {
-                    for mut cmd in &mut robot_cmds {
-                        *cmd = RobotCommand::SeekAndCapture(None);
-                    }
+                    new_cmd = Some(RobotCommand::SeekAndCapture(None));
                 }
-                if ui.button("Defend (ПКМ = позиция)").clicked() {
-                    // Позиция задаётся правым кликом — здесь просто Defend(Vec3::ZERO)
-                    for mut cmd in &mut robot_cmds {
-                        *cmd = RobotCommand::Defend(Vec3::ZERO);
-                    }
+                if ui.button("Defend (здесь)").clicked() {
+                    new_cmd = Some(RobotCommand::Defend(Vec3::ZERO));
                 }
                 if ui.button("Idle").clicked() {
-                    for mut cmd in &mut robot_cmds {
-                        *cmd = RobotCommand::Idle;
-                    }
+                    new_cmd = Some(RobotCommand::Idle);
                 }
+                ui.label("ПКМ = MoveTo | P+ПКМ = Patrol");
 
-                if cmd_ui.show_patrol_hint {
+                if show_patrol {
                     ui.separator();
-                    ui.colored_label(egui::Color32::YELLOW,
-                        format!("Patrol: {} точек (P+ПКМ для добавления)", cmd_ui.patrol_points.len()));
+                    ui.colored_label(
+                        egui::Color32::YELLOW,
+                        format!("Patrol: {} точек (P+ПКМ для добавления)", cmd_ui.patrol_points.len()),
+                    );
                 }
             } else {
                 ui.label(format!("Выбрано роботов: {}", selection.selected.len()));
             }
         });
+
+    // Применяем команду ко всем выбранным роботам
+    if let Some(cmd) = new_cmd {
+        for (mut robot_cmd, ..) in &mut robots {
+            *robot_cmd = cmd.clone();
+        }
+    }
 
     Ok(())
 }
