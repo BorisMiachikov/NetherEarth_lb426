@@ -2,7 +2,15 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 use serde::Deserialize;
 
-use crate::app::state::AppState;
+use crate::{
+    app::state::AppState,
+    localization::{ChangeLanguage, Language, Localization},
+    save::{
+        io::{autosave_info, slot_info},
+        systems::{TriggerLoad, TriggerLoadAutosave, TriggerSave},
+        SAVE_SLOT_COUNT,
+    },
+};
 
 // ---------------------------------------------------------------------------
 // Ресурс: выбранный сценарий
@@ -71,6 +79,15 @@ impl ScenarioList {
 #[derive(Resource, Default)]
 pub struct SelectedMapPath(pub String);
 
+/// Какая вкладка открыта в меню паузы.
+#[derive(Resource, Default, PartialEq, Eq, Clone, Copy)]
+pub enum PauseSubPanel {
+    #[default]
+    None,
+    Save,
+    Load,
+}
+
 // ---------------------------------------------------------------------------
 // Системы меню
 // ---------------------------------------------------------------------------
@@ -110,6 +127,8 @@ pub fn draw_main_menu(
     mut contexts: EguiContexts,
     mut scenarios: ResMut<ScenarioList>,
     mut exit: MessageWriter<AppExit>,
+    loc: Res<Localization>,
+    mut commands: Commands,
 ) -> Result {
     if *state.get() != AppState::MainMenu {
         return Ok(());
@@ -117,7 +136,6 @@ pub fn draw_main_menu(
 
     let ctx = contexts.ctx_mut()?;
 
-    // Полупрозрачный фон
     egui::Area::new(egui::Id::new("menu_overlay"))
         .fixed_pos(egui::Pos2::ZERO)
         .order(egui::Order::Background)
@@ -140,19 +158,18 @@ pub fn draw_main_menu(
                 .stroke(egui::Stroke::new(2.0, egui::Color32::from_rgb(60, 120, 200))),
         )
         .show(ctx, |ui| {
-            // Фиксированная ширина окна меню
             ui.set_width(260.0);
 
             ui.vertical_centered(|ui| {
                 ui.add_space(16.0);
                 ui.label(
-                    egui::RichText::new("NETHER EARTH")
+                    egui::RichText::new(loc.t("menu.title"))
                         .size(30.0)
                         .strong()
                         .color(egui::Color32::from_rgb(80, 190, 255)),
                 );
                 ui.label(
-                    egui::RichText::new("LB426")
+                    egui::RichText::new(loc.t("menu.subtitle"))
                         .size(13.0)
                         .color(egui::Color32::GRAY),
                 );
@@ -162,9 +179,8 @@ pub fn draw_main_menu(
             ui.separator();
             ui.add_space(6.0);
 
-            // --- Выбор сценария ---
             ui.label(
-                egui::RichText::new("СЦЕНАРИЙ")
+                egui::RichText::new(loc.t("menu.scenario"))
                     .small()
                     .color(egui::Color32::DARK_GRAY),
             );
@@ -172,14 +188,12 @@ pub fn draw_main_menu(
 
             let scenario_count = scenarios.scenarios.len();
             if scenario_count > 1 {
-                // Кнопки ◀ / имя / ▶ — фиксированная строка
                 ui.horizontal(|ui| {
                     let prev_ok = scenarios.selected > 0;
                     if ui.add_enabled(prev_ok, egui::Button::new("◀")).clicked() {
                         scenarios.selected -= 1;
                     }
-                    // имя сценария — занимает фиксированную ширину
-                    let name_w = 200.0 - 28.0 * 2.0; // ширина минус обе кнопки
+                    let name_w = 200.0 - 28.0 * 2.0;
                     ui.add_sized(
                         [name_w, 18.0],
                         egui::Label::new(
@@ -193,7 +207,6 @@ pub fn draw_main_menu(
                         scenarios.selected += 1;
                     }
                 });
-                // Описание — обёрнутое, не растягивает окно
                 ui.add(
                     egui::Label::new(
                         egui::RichText::new(&scenarios.current().description)
@@ -203,24 +216,31 @@ pub fn draw_main_menu(
                     .wrap(),
                 );
             } else if let Some(s) = scenarios.scenarios.first() {
-                ui.label(
-                    egui::RichText::new(&s.name)
-                        .color(egui::Color32::WHITE),
-                );
+                ui.label(egui::RichText::new(&s.name).color(egui::Color32::WHITE));
             }
 
             ui.add_space(14.0);
 
             ui.vertical_centered(|ui| {
+                // Кнопка "Продолжить" — только если есть автосохранение
+                if let Some(autosave_day) = autosave_info() {
+                    let label = format!("{} ({}{})", loc.t("menu.continue"), loc.t("save.day"), autosave_day);
+                    if ui.add_sized([200.0, 38.0], egui::Button::new(label)).clicked() {
+                        commands.trigger(TriggerLoadAutosave);
+                        next_state.set(AppState::Playing);
+                    }
+                    ui.add_space(6.0);
+                }
+
                 if ui
-                    .add_sized([200.0, 38.0], egui::Button::new("▶  Новая игра"))
+                    .add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.new_game")))
                     .clicked()
                 {
                     next_state.set(AppState::Playing);
                 }
                 ui.add_space(8.0);
                 if ui
-                    .add_sized([200.0, 38.0], egui::Button::new("✕  Выход"))
+                    .add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.quit")))
                     .clicked()
                 {
                     exit.write(AppExit::Success);
@@ -239,8 +259,13 @@ pub fn draw_pause_menu(
     mut contexts: EguiContexts,
     mut time: ResMut<Time<Virtual>>,
     mut exit: MessageWriter<AppExit>,
+    loc: Res<Localization>,
+    mut sub_panel: Local<PauseSubPanel>,
+    mut commands: Commands,
 ) -> Result {
     if *state.get() != AppState::Paused {
+        // Сброс вкладки при выходе из паузы
+        *sub_panel = PauseSubPanel::None;
         return Ok(());
     }
 
@@ -268,49 +293,137 @@ pub fn draw_pause_menu(
                 .stroke(egui::Stroke::new(2.0, egui::Color32::from_rgb(60, 120, 200))),
         )
         .show(ctx, |ui| {
-            ui.set_min_width(210.0);
+            ui.set_min_width(240.0);
             ui.vertical_centered(|ui| {
                 ui.add_space(12.0);
                 ui.label(
-                    egui::RichText::new("ПАУЗА")
+                    egui::RichText::new(loc.t("pause.title"))
                         .size(22.0)
                         .strong()
                         .color(egui::Color32::from_rgb(200, 200, 200)),
                 );
-                ui.add_space(20.0);
-
-                if ui
-                    .add_sized([170.0, 34.0], egui::Button::new("▶  Продолжить"))
-                    .clicked()
-                {
-                    time.unpause();
-                    next_state.set(AppState::Playing);
-                }
-                ui.add_space(8.0);
-                if ui
-                    .add_sized([170.0, 34.0], egui::Button::new("⌂  Главное меню"))
-                    .clicked()
-                {
-                    time.unpause();
-                    next_state.set(AppState::MainMenu);
-                }
-                ui.add_space(8.0);
-                if ui
-                    .add_sized([170.0, 34.0], egui::Button::new("✕  Выход"))
-                    .clicked()
-                {
-                    exit.write(AppExit::Success);
-                }
                 ui.add_space(12.0);
-
-                ui.separator();
-                ui.label(
-                    egui::RichText::new("ESC — продолжить")
-                        .size(11.0)
-                        .color(egui::Color32::DARK_GRAY),
-                );
-                ui.add_space(6.0);
             });
+
+            match *sub_panel {
+                PauseSubPanel::None => {
+                    ui.vertical_centered(|ui| {
+                        if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.continue"))).clicked() {
+                            time.unpause();
+                            next_state.set(AppState::Playing);
+                        }
+                        ui.add_space(6.0);
+                        if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.save"))).clicked() {
+                            *sub_panel = PauseSubPanel::Save;
+                        }
+                        ui.add_space(4.0);
+                        if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.load"))).clicked() {
+                            *sub_panel = PauseSubPanel::Load;
+                        }
+                        ui.add_space(6.0);
+                        if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.main_menu"))).clicked() {
+                            time.unpause();
+                            *sub_panel = PauseSubPanel::None;
+                            next_state.set(AppState::MainMenu);
+                        }
+                        ui.add_space(4.0);
+                        if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.quit"))).clicked() {
+                            exit.write(AppExit::Success);
+                        }
+                        ui.add_space(10.0);
+
+                        // Смена языка
+                        ui.separator();
+                        ui.add_space(4.0);
+                        ui.horizontal(|ui| {
+                            ui.label(egui::RichText::new(loc.t("settings.language")).color(egui::Color32::GRAY).size(12.0));
+                            ui.add_space(6.0);
+                            for lang in [Language::Russian, Language::English] {
+                                let active = loc.language == lang;
+                                let btn = egui::Button::new(
+                                    egui::RichText::new(lang.label())
+                                        .color(if active { egui::Color32::from_rgb(80, 190, 255) } else { egui::Color32::GRAY })
+                                );
+                                if ui.add_enabled(!active, btn).clicked() {
+                                    commands.trigger(ChangeLanguage(lang));
+                                }
+                            }
+                        });
+                        ui.add_space(6.0);
+
+                        ui.separator();
+                        ui.label(
+                            egui::RichText::new(loc.t("pause.hint"))
+                                .size(11.0)
+                                .color(egui::Color32::DARK_GRAY),
+                        );
+                        ui.add_space(6.0);
+                    });
+                }
+
+                PauseSubPanel::Save => {
+                    ui.label(
+                        egui::RichText::new(loc.t("pause.save"))
+                            .color(egui::Color32::from_rgb(80, 190, 255))
+                            .size(14.0),
+                    );
+                    ui.add_space(6.0);
+
+                    for slot in 0..SAVE_SLOT_COUNT {
+                        let label = if let Some((day, _ts)) = slot_info(slot) {
+                            format!("{} {} — {} {}", loc.t("save.slot"), slot + 1, loc.t("save.day"), day)
+                        } else {
+                            format!("{} {} — {}", loc.t("save.slot"), slot + 1, loc.t("save.empty"))
+                        };
+                        if ui.add_sized([190.0, 28.0], egui::Button::new(label)).clicked() {
+                            commands.trigger(TriggerSave { slot });
+                        }
+                        ui.add_space(2.0);
+                    }
+
+                    ui.add_space(8.0);
+                    if ui.button("← Назад").clicked() {
+                        *sub_panel = PauseSubPanel::None;
+                    }
+                    ui.add_space(6.0);
+                }
+
+                PauseSubPanel::Load => {
+                    ui.label(
+                        egui::RichText::new(loc.t("pause.load"))
+                            .color(egui::Color32::from_rgb(80, 190, 255))
+                            .size(14.0),
+                    );
+                    ui.add_space(6.0);
+
+                    for slot in 0..SAVE_SLOT_COUNT {
+                        let (label, has_save) = if let Some((day, _ts)) = slot_info(slot) {
+                            (
+                                format!("{} {} — {} {}", loc.t("save.slot"), slot + 1, loc.t("save.day"), day),
+                                true,
+                            )
+                        } else {
+                            (
+                                format!("{} {} — {}", loc.t("save.slot"), slot + 1, loc.t("save.empty")),
+                                false,
+                            )
+                        };
+                        if ui.add_enabled(has_save, egui::Button::new(label).min_size([190.0, 28.0].into())).clicked() {
+                            commands.trigger(TriggerLoad { slot });
+                            time.unpause();
+                            *sub_panel = PauseSubPanel::None;
+                            next_state.set(AppState::Playing);
+                        }
+                        ui.add_space(2.0);
+                    }
+
+                    ui.add_space(8.0);
+                    if ui.button("← Назад").clicked() {
+                        *sub_panel = PauseSubPanel::None;
+                    }
+                    ui.add_space(6.0);
+                }
+            }
         });
 
     Ok(())

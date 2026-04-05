@@ -1,0 +1,47 @@
+{
+    // Главное меню
+    "menu.title": "NETHER EARTH",
+    "menu.subtitle": "LB426",
+    "menu.scenario": "СЦЕНАРИЙ",
+    "menu.new_game": "▶  Новая игра",
+    "menu.continue": "↺  Продолжить",
+    "menu.quit": "✕  Выход",
+
+    // Пауза
+    "pause.title": "ПАУЗА",
+    "pause.continue": "▶  Продолжить",
+    "pause.save": "💾  Сохранить",
+    "pause.load": "📂  Загрузить",
+    "pause.main_menu": "⌂  Главное меню",
+    "pause.quit": "✕  Выход",
+    "pause.hint": "ESC — продолжить",
+
+    // Слоты сохранения
+    "save.slot": "Слот",
+    "save.empty": "(пусто)",
+    "save.day": "День",
+    "save.autosave": "Автосохранение",
+    "save.overwrite": "Перезаписать?",
+    "save.saved": "Сохранено!",
+    "save.loaded": "Загружено!",
+
+    // Game Over
+    "gameover.victory": "ПОБЕДА",
+    "gameover.defeat": "ПОРАЖЕНИЕ",
+    "gameover.days": "Дней прожито",
+    "gameover.your_factories": "Ваших фабрик",
+    "gameover.enemy_factories": "Фабрик врага",
+    "gameover.main_menu": "⌂  Главное меню",
+    "gameover.quit": "✕  Выход",
+
+    // Настройки
+    "settings.language": "Язык",
+    "settings.music": "Музыка",
+    "settings.sfx": "Звуки",
+
+    // Команды
+    "cmd.attack": "Атака",
+    "cmd.capture": "Захват",
+    "cmd.defend": "Держать",
+    "cmd.stop": "Стоп",
+}

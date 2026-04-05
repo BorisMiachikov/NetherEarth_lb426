@@ -1,0 +1,47 @@
+{
+    // Main menu
+    "menu.title": "NETHER EARTH",
+    "menu.subtitle": "LB426",
+    "menu.scenario": "SCENARIO",
+    "menu.new_game": "▶  New Game",
+    "menu.continue": "↺  Continue",
+    "menu.quit": "✕  Quit",
+
+    // Pause
+    "pause.title": "PAUSED",
+    "pause.continue": "▶  Continue",
+    "pause.save": "💾  Save",
+    "pause.load": "📂  Load",
+    "pause.main_menu": "⌂  Main Menu",
+    "pause.quit": "✕  Quit",
+    "pause.hint": "ESC — continue",
+
+    // Save slots
+    "save.slot": "Slot",
+    "save.empty": "(empty)",
+    "save.day": "Day",
+    "save.autosave": "Autosave",
+    "save.overwrite": "Overwrite?",
+    "save.saved": "Saved!",
+    "save.loaded": "Loaded!",
+
+    // Game Over
+    "gameover.victory": "VICTORY",
+    "gameover.defeat": "DEFEAT",
+    "gameover.days": "Days survived",
+    "gameover.your_factories": "Your factories",
+    "gameover.enemy_factories": "Enemy factories",
+    "gameover.main_menu": "⌂  Main Menu",
+    "gameover.quit": "✕  Quit",
+
+    // Settings
+    "settings.language": "Language",
+    "settings.music": "Music",
+    "settings.sfx": "Sound FX",
+
+    // Commands
+    "cmd.attack": "Attack",
+    "cmd.capture": "Capture",
+    "cmd.defend": "Defend",
+    "cmd.stop": "Stop",
+}

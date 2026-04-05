@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 // ── Типы ─────────────────────────────────────────────────────────────────────
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, Deserialize)]
 pub enum ChassisType {
     Wheels,
     Bipod,
@@ -23,14 +23,14 @@ impl std::fmt::Display for ChassisType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, Deserialize)]
 pub enum WeaponType {
     Cannon,
     Missile,
     Phasers,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, serde::Serialize, Deserialize)]
 pub struct WeaponData {
     pub weapon_type: WeaponType,
     pub damage: f32,

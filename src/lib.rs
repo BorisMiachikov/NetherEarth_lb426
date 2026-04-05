@@ -7,6 +7,7 @@ mod command;
 mod core;
 mod debug;
 mod economy;
+pub mod localization;
 mod map;
 mod movement;
 mod player;

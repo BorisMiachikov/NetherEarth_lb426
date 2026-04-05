@@ -11,6 +11,7 @@ use crate::{
     core::CorePlugin,
     debug::DebugPlugin,
     economy::EconomyPlugin,
+    localization::LocalizationPlugin,
     map::MapPlugin,
     movement::MovementPlugin,
     player::PlayerPlugin,
@@ -38,6 +39,7 @@ impl Plugin for AppPlugin {
         .add_plugins(MeshPickingPlugin)
         .init_state::<AppState>()
         .add_plugins((
+            LocalizationPlugin,
             CorePlugin,
             MapPlugin,
             CameraPlugin,
@@ -45,6 +47,8 @@ impl Plugin for AppPlugin {
             RobotPlugin,
             CommandPlugin,
             MovementPlugin,
+        ))
+        .add_plugins((
             CombatPlugin,
             EconomyPlugin,
             StructurePlugin,
