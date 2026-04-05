@@ -3,6 +3,7 @@ use bevy_egui::EguiPlugin;
 
 use super::state::AppState;
 use crate::{
+    ai::AiPlugin,
     audio::AudioPlugin,
     camera::CameraPlugin,
     combat::CombatPlugin,
@@ -47,6 +48,7 @@ impl Plugin for AppPlugin {
             CombatPlugin,
             EconomyPlugin,
             StructurePlugin,
+            AiPlugin,
             UiPlugin,
             AudioPlugin,
             SavePlugin,

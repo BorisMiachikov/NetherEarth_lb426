@@ -1,16 +1,25 @@
 pub mod builder_ui;
+pub mod gameover;
 pub mod hud;
 
 use bevy::prelude::*;
 
 use builder_ui::{draw_builder_ui, open_builder_input, BuilderUiState};
+use gameover::draw_gameover_screen;
 use hud::draw_resource_hud;
 
 pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<BuilderUiState>()
-            .add_systems(Update, (draw_resource_hud, draw_builder_ui, open_builder_input));
+        app.init_resource::<BuilderUiState>().add_systems(
+            Update,
+            (
+                draw_resource_hud,
+                draw_builder_ui,
+                open_builder_input,
+                draw_gameover_screen,
+            ),
+        );
     }
 }
