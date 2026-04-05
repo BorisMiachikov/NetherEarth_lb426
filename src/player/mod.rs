@@ -14,6 +14,8 @@ use selection::{
 };
 use systems::{move_scout, spawn_scout};
 
+use crate::app::state::AppState;
+
 pub use components::{PlayerScout, ScoutMoveIntent, ScoutMovement};
 pub use selection::Selected;
 
@@ -25,14 +27,21 @@ impl Plugin for PlayerPlugin {
             .init_resource::<CommandUiState>()
             .add_observer(on_robot_click)
             .add_systems(Startup, spawn_scout)
-            .add_systems(Update, (
-                read_scout_input,
-                right_click_move,
-                handle_selection_groups,
-                draw_selection_indicators,
-                draw_command_indicators,
-            ))
-            .add_systems(FixedUpdate, move_scout)
-            .add_systems(EguiPrimaryContextPass, robot_info_panel);
+            .add_systems(
+                Update,
+                (
+                    read_scout_input,
+                    right_click_move,
+                    handle_selection_groups,
+                    draw_selection_indicators,
+                    draw_command_indicators,
+                )
+                    .run_if(in_state(AppState::Playing)),
+            )
+            .add_systems(FixedUpdate, move_scout.run_if(in_state(AppState::Playing)))
+            .add_systems(
+                EguiPrimaryContextPass,
+                robot_info_panel.run_if(in_state(AppState::Playing)),
+            );
     }
 }

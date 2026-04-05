@@ -100,7 +100,7 @@ pub fn robot_info_panel(
         .default_pos([10.0, 350.0])
         .resizable(false)
         .show(ctx, |ui| {
-            if let Some((chassis_s, team_s, hp_s, weapons_s, cmd_s)) = &display_info {
+            if let Some((chassis_s, team_s, hp_s, weapons_s, cmd_s, robot_pos)) = &display_info {
                 ui.label(chassis_s);
                 ui.label(team_s);
                 ui.label(hp_s);
@@ -116,7 +116,7 @@ pub fn robot_info_panel(
                     new_cmd = Some(RobotCommand::SeekAndCapture(None));
                 }
                 if ui.button("Defend (здесь)").clicked() {
-                    new_cmd = Some(RobotCommand::Defend(tf.translation));
+                    new_cmd = Some(RobotCommand::Defend(*robot_pos));
                 }
                 if ui.button("Idle").clicked() {
                     new_cmd = Some(RobotCommand::Idle);
