@@ -25,12 +25,8 @@ pub fn process_commands(
                     .insert(CurrentPath::default());
             }
             RobotCommand::SeekAndDestroy(_) => {
-                // Навигация и поиск целей — в update_seek_destroy (с учётом VisionRange).
-                // Очищаем путь, чтобы робот не стоял на месте.
-                commands
-                    .entity(entity)
-                    .remove::<MovementTarget>()
-                    .insert(CurrentPath::default());
+                // Навигация полностью управляется update_seek_destroy (с учётом VisionRange).
+                // НЕ трогаем MovementTarget здесь — иначе возникает конфликт с деferred-командами.
             }
             RobotCommand::SeekAndCapture(_) => {
                 // Навигация — seek_capture_navigation (FixedUpdate)
