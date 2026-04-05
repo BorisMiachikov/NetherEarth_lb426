@@ -35,10 +35,12 @@ impl Plugin for StructurePlugin {
                     tick_production_queue,
                 ),
             )
+            // Не-egui визуалы — в Update
             .add_systems(
                 Update,
-                (structure_tooltip, draw_capture_progress, draw_production_progress),
+                (draw_capture_progress, draw_production_progress),
             );
+            // structure_tooltip зарегистрирован в DebugPlugin (EguiPrimaryContextPass)
     }
 }
 

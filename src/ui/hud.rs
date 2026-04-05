@@ -26,7 +26,7 @@ pub fn draw_resource_hud(
 
     egui::Window::new("Ресурсы")
         .id(egui::Id::new("resource_hud"))
-        .anchor(egui::Align2::LEFT_TOP, [10.0, 10.0])
+        .default_pos([10.0, 10.0])
         .resizable(false)
         .collapsible(false)
         .title_bar(true)

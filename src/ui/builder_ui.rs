@@ -174,7 +174,7 @@ pub fn draw_builder_ui(
         .id(egui::Id::new("builder_ui"))
         .resizable(false)
         .collapsible(false)
-        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .default_pos([440.0, 160.0])
         .show(ctx, |ui| {
             // ── Шасси ──────────────────────────────────────────────────────
             ui.label(egui::RichText::new("Шасси").strong());

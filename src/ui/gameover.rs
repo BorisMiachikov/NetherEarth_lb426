@@ -21,7 +21,7 @@ pub fn draw_gameover_screen(
 
     egui::Window::new("Итог игры")
         .id(egui::Id::new("gameover"))
-        .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+        .default_pos([440.0, 260.0])
         .resizable(false)
         .collapsible(false)
         .show(ctx, |ui| {
