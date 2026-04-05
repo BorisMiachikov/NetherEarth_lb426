@@ -19,19 +19,14 @@ pub struct CurrentPath {
 pub fn compute_path(
     map: Res<MapGrid>,
     mut query: Query<
-        (&Transform, &Chassis, &mut CurrentPath),
-        (With<RobotMarker>, Changed<MovementTarget>),
+        (&Transform, &Chassis, &mut CurrentPath, Ref<MovementTarget>),
+        With<RobotMarker>,
     >,
-    targets: Query<&MovementTarget>,
-    entities: Query<Entity, With<RobotMarker>>,
 ) {
-    for entity in &entities {
-        let Ok((tf, chassis, mut path)) = query.get_mut(entity) else {
+    for (tf, chassis, mut path, target) in &mut query {
+        if !target.is_changed() {
             continue;
-        };
-        let Ok(target) = targets.get(entity) else {
-            continue;
-        };
+        }
 
         let Some(start) = map.world_to_grid(tf.translation) else {
             continue;
