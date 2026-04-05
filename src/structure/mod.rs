@@ -17,7 +17,7 @@ use capture::{
     update_capture_progress, CaptureProgress, Capturable,
 };
 use factory::{Factory, FactoryType, ProductionRate};
-use warbase::{ProductionQueue, Warbase};
+use warbase::{draw_production_progress, tick_production_queue, ProductionQueue, Warbase};
 
 pub use factory::FactoryType as FactType;
 
@@ -32,9 +32,13 @@ impl Plugin for StructurePlugin {
                 (
                     seek_capture_navigation,
                     update_capture_progress.after(seek_capture_navigation),
+                    tick_production_queue,
                 ),
             )
-            .add_systems(Update, (structure_tooltip, draw_capture_progress));
+            .add_systems(
+                Update,
+                (structure_tooltip, draw_capture_progress, draw_production_progress),
+            );
     }
 }
 
