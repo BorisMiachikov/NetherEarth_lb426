@@ -12,7 +12,10 @@ use crate::{
     },
 };
 
-use capture::{CaptureProgress, Capturable};
+use capture::{
+    draw_capture_progress, on_structure_captured, seek_capture_navigation,
+    update_capture_progress, CaptureProgress, Capturable,
+};
 use factory::{Factory, FactoryType, ProductionRate};
 use warbase::{ProductionQueue, Warbase};
 
@@ -22,7 +25,16 @@ pub struct StructurePlugin;
 
 impl Plugin for StructurePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_structures.after(crate::map::spawn_ground));
+        app.add_systems(Startup, spawn_structures.after(crate::map::spawn_ground))
+            .add_observer(on_structure_captured)
+            .add_systems(
+                FixedUpdate,
+                (
+                    seek_capture_navigation,
+                    update_capture_progress.after(seek_capture_navigation),
+                ),
+            )
+            .add_systems(Update, (structure_tooltip, draw_capture_progress));
     }
 }
 

@@ -32,8 +32,7 @@ pub fn process_commands(
                 }
             }
             RobotCommand::SeekAndCapture(_) => {
-                // Заглушка — в Фазе 6 заменяется на реальный захват
-                info!("SeekAndCapture не реализован полностью (Фаза 6)");
+                // Навигация обрабатывается системой seek_capture_navigation (FixedUpdate)
             }
             RobotCommand::Defend(pos) => {
                 // Встать на позицию, затем ждать (атака — Фаза 5)

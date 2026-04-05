@@ -1,4 +1,4 @@
-use bevy::{picking::mesh_picking::MeshPickingPlugin, prelude::*};
+use bevy::prelude::*;
 use crate::combat::WeaponCooldowns;
 
 use crate::core::{Health, Team};
@@ -51,12 +51,22 @@ pub fn spawn_robot(
 
     let chassis_def = registry.chassis(blueprint.chassis)?;
 
-    // RobotStats
     let weapon_data = blueprint.weapon_data(registry);
     let slots = WeaponSlots { slots: weapon_data };
     let max_hp = chassis_def.base_hp + slots.total_weight() * 2.0;
     let speed = chassis_def.speed;
-    let mut capture_time = chassis_def.capture_time;
+
+    // Рассчитать capture_time с учётом электроники
+    let electronics_opt = if blueprint.has_electronics {
+        Some(registry.electronics.clone())
+    } else {
+        None
+    };
+    let capture_time = if let Some(ref elec) = electronics_opt {
+        chassis_def.capture_time * (1.0 - elec.capture_time_reduction)
+    } else {
+        chassis_def.capture_time
+    };
 
     let chassis = Chassis {
         chassis_type: blueprint.chassis,
@@ -97,10 +107,7 @@ pub fn spawn_robot(
     ));
     entity.insert(WeaponCooldowns::default());
 
-    // Опциональные модули
-    if blueprint.has_electronics {
-        let elec = registry.electronics.clone();
-        capture_time *= 1.0 - elec.capture_time_reduction;
+    if let Some(elec) = electronics_opt {
         entity.insert(Electronics {
             radar_range: elec.radar_range,
             accuracy_bonus: elec.accuracy_bonus,
