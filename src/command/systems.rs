@@ -17,13 +17,14 @@ pub fn process_commands(
     for (entity, cmd, tf, team) in &query {
         match cmd {
             RobotCommand::MoveTo(target) => {
+                info!("[process_commands] MoveTo → inserting MovementTarget {:?}", target);
                 commands.entity(entity).insert(MovementTarget(*target));
             }
             RobotCommand::Idle => {
                 commands
                     .entity(entity)
                     .remove::<MovementTarget>()
-                    .remove::<CurrentPath>();
+                    .insert(CurrentPath::default());
             }
             RobotCommand::SeekAndDestroy(_) => {
                 // Найти ближайшего врага

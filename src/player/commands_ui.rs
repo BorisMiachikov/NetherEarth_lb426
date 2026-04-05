@@ -66,7 +66,7 @@ pub fn robot_info_panel(
     mut contexts: EguiContexts,
     selection: Res<SelectionState>,
     mut robots: Query<
-        (&mut RobotCommand, &crate::core::Health, &crate::robot::components::Chassis,
+        (&mut RobotCommand, &Transform, &crate::core::Health, &crate::robot::components::Chassis,
          &crate::robot::components::WeaponSlots, &Team),
         With<Selected>,
     >,
@@ -80,7 +80,7 @@ pub fn robot_info_panel(
 
     // Собираем данные для отображения и список нажатых кнопок
     let mut new_cmd: Option<RobotCommand> = None;
-    let (display_info, show_patrol) = if let Ok((cmd, health, chassis, weapons, team)) = robots.single() {
+    let (display_info, show_patrol) = if let Ok((cmd, tf, health, chassis, weapons, team)) = robots.single() {
         (
             Some((
                 format!("Шасси: {:?}", chassis.chassis_type),
@@ -88,6 +88,7 @@ pub fn robot_info_panel(
                 format!("HP: {:.0} / {:.0}", health.current, health.max),
                 format!("Оружия: {}", weapons.count()),
                 format!("Приказ: {}", cmd_label(&cmd)),
+                tf.translation,
             )),
             cmd_ui.show_patrol_hint,
         )
@@ -115,7 +116,7 @@ pub fn robot_info_panel(
                     new_cmd = Some(RobotCommand::SeekAndCapture(None));
                 }
                 if ui.button("Defend (здесь)").clicked() {
-                    new_cmd = Some(RobotCommand::Defend(Vec3::ZERO));
+                    new_cmd = Some(RobotCommand::Defend(tf.translation));
                 }
                 if ui.button("Idle").clicked() {
                     new_cmd = Some(RobotCommand::Idle);
@@ -136,8 +137,14 @@ pub fn robot_info_panel(
 
     // Применяем команду ко всем выбранным роботам
     if let Some(cmd) = new_cmd {
-        for (mut robot_cmd, ..) in &mut robots {
-            *robot_cmd = cmd.clone();
+        for (mut robot_cmd, tf, ..) in &mut robots {
+            // Для Defend берём позицию каждого робота индивидуально
+            let actual_cmd = if matches!(cmd, RobotCommand::Defend(_)) {
+                RobotCommand::Defend(tf.translation)
+            } else {
+                cmd.clone()
+            };
+            *robot_cmd = actual_cmd;
         }
     }
 

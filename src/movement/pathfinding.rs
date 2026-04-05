@@ -62,9 +62,21 @@ pub fn find_path(
         }
     };
 
-    if !is_walkable(goal) {
-        return None;
-    }
+    // Если цель непроходима (стоит структура), берём ближайшую соседнюю клетку.
+    let goal = if !is_walkable(goal) {
+        let adj = [
+            GridCell::new(goal.x.wrapping_sub(1), goal.y),
+            GridCell::new(goal.x + 1, goal.y),
+            GridCell::new(goal.x, goal.y.wrapping_sub(1)),
+            GridCell::new(goal.x, goal.y + 1),
+        ];
+        match adj.into_iter().find(|&c| is_walkable(c)) {
+            Some(c) => c,
+            None => return None,
+        }
+    } else {
+        goal
+    };
 
     let mut open = BinaryHeap::new();
     let mut came_from: HashMap<GridCell, GridCell> = HashMap::new();

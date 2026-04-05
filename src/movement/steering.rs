@@ -13,20 +13,24 @@ use super::{
 pub struct CurrentPath {
     pub waypoints: Vec<GridCell>,
     pub index: usize,
+    /// Последняя цель, для которой был вычислен путь.
+    /// Путь пересчитывается только когда цель меняется.
+    pub last_target: Option<Vec3>,
 }
 
 /// Обновляет CurrentPath при смене MovementTarget (вычисляет A*).
 pub fn compute_path(
     map: Res<MapGrid>,
     mut query: Query<
-        (&Transform, &Chassis, &mut CurrentPath, Ref<MovementTarget>),
+        (&Transform, &Chassis, &mut CurrentPath, &MovementTarget),
         With<RobotMarker>,
     >,
 ) {
     for (tf, chassis, mut path, target) in &mut query {
-        if !target.is_changed() {
+        if path.last_target == Some(target.0) {
             continue;
         }
+        path.last_target = Some(target.0);
 
         let Some(start) = map.world_to_grid(tf.translation) else {
             continue;
