@@ -51,7 +51,6 @@ pub struct Chassis {
     pub base_hp: f32,
     pub speed: f32,
     pub mobility: f32,
-    pub capture_time: f32,
 }
 
 /// До 3 слотов оружия.

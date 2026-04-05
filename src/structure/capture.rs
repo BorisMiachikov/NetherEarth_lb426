@@ -5,8 +5,8 @@ use bevy::prelude::*;
 use crate::{
     command::command::RobotCommand,
     core::{events::StructureCaptured, Team},
-    movement::velocity::MovementTarget,
-    robot::components::{RobotMarker, RobotStats},
+    movement::{exploration_target, velocity::MovementTarget},
+    robot::components::{RobotMarker, RobotStats, VisionRange},
 };
 
 /// Маркер: структура может быть захвачена.
@@ -42,6 +42,9 @@ impl CaptureProgress {
 /// Дистанция для начала захвата (game units).
 pub const CAPTURE_RANGE: f32 = 2.5;
 
+/// Базовое время захвата (сек) — одинаково для всех шасси.
+pub const BASE_CAPTURE_TIME: f32 = 10.0;
+
 /// Цвет команды для перекраски структур.
 pub fn team_color_core(team: Team) -> Color {
     match team {
@@ -51,53 +54,50 @@ pub fn team_color_core(team: Team) -> Color {
     }
 }
 
-/// Направляет роботов с приказом SeekAndCapture к ближайшей вражеской структуре.
-/// Останавливает робота когда он в радиусе захвата.
+/// Направляет роботов с приказом SeekAndCapture к ближайшей видимой чужой структуре.
+/// Если структур в радиусе видимости нет — исследует карту.
 pub fn seek_capture_navigation(
     mut commands: Commands,
-    mut robots: Query<(Entity, &mut RobotCommand, &Transform, &Team), With<RobotMarker>>,
+    mut robots: Query<
+        (Entity, &mut RobotCommand, &Transform, &Team, &VisionRange, Option<&MovementTarget>),
+        With<RobotMarker>,
+    >,
     capturable: Query<(Entity, &Transform, &Team), (With<Capturable>, With<CaptureProgress>)>,
+    map: Res<crate::map::grid::MapGrid>,
 ) {
-    for (robot_entity, mut cmd, robot_tf, robot_team) in &mut robots {
+    for (robot_entity, mut cmd, robot_tf, robot_team, vision, cur_target) in &mut robots {
         let RobotCommand::SeekAndCapture(ref mut target_opt) = *cmd else {
             continue;
         };
 
-        // Проверить валидность текущей цели
-        let current_valid = target_opt
-            .and_then(|t| capturable.get(t).ok())
+        let robot_pos = robot_tf.translation;
+
+        // Ближайшая видимая чужая структура
+        let visible_target = capturable
+            .iter()
             .filter(|(_, _, t)| *t != robot_team)
+            .filter(|(_, tf, _)| robot_pos.distance(tf.translation) <= vision.0)
+            .min_by_key(|(_, tf, _)| (robot_pos.distance(tf.translation) * 100.0) as u32)
             .map(|(e, tf, _)| (e, tf.translation));
 
-        // Если текущая цель невалидна — найти ближайшую
-        let target = current_valid.or_else(|| {
-            capturable
-                .iter()
-                .filter(|(_, _, t)| *t != robot_team)
-                .min_by_key(|(_, tf, _)| {
-                    (tf.translation.distance(robot_tf.translation) * 100.0) as u32
-                })
-                .map(|(e, tf, _)| (e, tf.translation))
-        });
-
-        if let Some((target_entity, target_pos)) = target {
-            // Обновить цель только если изменилась
+        if let Some((target_entity, target_pos)) = visible_target {
             if *target_opt != Some(target_entity) {
                 *target_opt = Some(target_entity);
             }
-
-            let dist = robot_tf.translation.xz().distance(target_pos.xz());
+            let dist = robot_pos.xz().distance(target_pos.xz());
             if dist <= CAPTURE_RANGE {
-                // В радиусе захвата — остановиться
                 commands.entity(robot_entity).remove::<MovementTarget>();
             } else {
-                commands
-                    .entity(robot_entity)
-                    .insert(MovementTarget(target_pos));
+                commands.entity(robot_entity).try_insert(MovementTarget(target_pos));
             }
         } else {
-            // Нет целей — перейти в Idle
-            *cmd = RobotCommand::Idle;
+            // Ничего не видно — исследовать карту
+            let near_target = cur_target
+                .map_or(true, |t| robot_pos.xz().distance(t.0.xz()) < 2.0);
+            if near_target {
+                let explore = exploration_target(robot_entity, robot_pos, map.width, map.height);
+                commands.entity(robot_entity).try_insert(MovementTarget(explore));
+            }
         }
     }
 }

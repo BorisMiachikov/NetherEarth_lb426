@@ -46,8 +46,8 @@ pub fn fire_weapons(
                         amount: weapon.damage,
                         attacker: Some(entity),
                     });
-                    // Визуальная вспышка выстрела
-                    commands.entity(entity).insert(MuzzleFlash {
+                    // Визуальная вспышка выстрела (try_insert: робот мог умереть в той же цепочке)
+                    commands.entity(entity).try_insert(MuzzleFlash {
                         target_pos: target_tf.translation,
                         timer: 0.1,
                     });

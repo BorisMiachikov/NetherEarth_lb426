@@ -3,7 +3,7 @@
 **Стек:** Rust (Stable), Bevy 0.18, Serde + RON  
 **Тип:** Solo-разработка  
 **Дата создания:** 2026-04-04  
-**Последнее обновление:** 2026-04-05 — Фаза 8 завершена (8.1-8.7, 8.9 скелет, 8.12-8.13; 8.10/8.11 — нужны .ogg)  
+**Последнее обновление:** 2026-04-05 — Фаза 8 завершена; баги захвата/ядерки исправлены; команда DestroyEnemyBase; навигация через VisionRange  
 **Авторитетная спецификация:** `1/Nether Earth LB426.md` (v2.0)
 
 ---
@@ -16,16 +16,16 @@
 | `core` | ✅ Реализован | GameTime, Health, Team, EntityDamaged/Destroyed observers |
 | `player` | ✅ Реализован | Скаут WASD+QE, выбор роботов (LMB/Shift/Ctrl+1-9), команды ПКМ |
 | `robot` | ✅ Реализован | Chassis/WeaponSlots/Electronics/Nuclear, ModuleRegistry, RobotBlueprint, spawn |
-| `ai` | ⬛ Не начат | ИИ командира противника (Utility AI), поведение отдельных роботов |
-| `command` | ✅ Реализован | Idle, MoveTo, SeekAndDestroy, SeekAndCapture, Defend, Patrol + queue |
-| `movement` | ✅ Реализован | A* по сетке, Velocity, MovementTarget, steering, follow_path |
-| `combat` | ✅ Реализован | Targeting, Cannon/Missile/Phasers, projectiles, death, nuclear blast |
-| `economy` | 🔶 Заглушка | PlayerResources с 7 типами — без цикла производства |
-| `structure` | 🔶 Частично | Factory/Warbase/Capturable spawn + tooltip — без механики захвата |
+| `ai` | ✅ Реализован | AICommander, Utility scoring, SeekAndDestroy/Capture/DestroyBase, ядерная стратегия |
+| `command` | ✅ Реализован | Idle, MoveTo, SeekAndDestroy, SeekAndCapture, DestroyEnemyBase, Defend, Patrol + queue |
+| `movement` | ✅ Реализован | A* по сетке, Velocity, MovementTarget, steering, follow_path, exploration_target |
+| `combat` | ✅ Реализован | Targeting, Cannon/Missile/Phasers, projectiles, death, nuclear blast (роботы + структуры) |
+| `economy` | ✅ Реализован | 7 ресурсов, производство по фабрикам, очередь постройки, HUD |
+| `structure` | ✅ Реализован | Factory/Warbase, захват через VisionRange, прогресс-бар, смена владельца |
 | `map` | ✅ Реализован | MapGrid 64×64, RON-загрузка, коллизия скаута, визуальная сетка |
-| `ui` | ⬛ Заглушка | Только stub-плагин |
+| `ui` | ✅ Реализован | HUD, миникарта, Builder UI, меню, пауза, Game Over, выбор сценария, панель юнитов |
 | `camera` | ✅ Реализован | Изометрическая орто-камера, зум скроллом, следование за скаутом |
-| `audio` | ⬛ Заглушка | Только stub-плагин |
+| `audio` | 🔶 Скелет | AudioSettings ресурс, интеграция без .ogg файлов |
 | `save` | ⬛ Заглушка | Только stub-плагин |
 | `debug` | ✅ Реализован | Gizmos сетка, overlay (координаты/FPS/GameTime), egui-панель спавна роботов |
 
@@ -83,14 +83,11 @@
 
 ### 2.7 Скорость захвата
 
-| Шасси | Время захвата (с) |
-|-------|--------------------|
-| Wheels | 15 |
-| Bipod | 12 |
-| Tracks | 8 |
-| AntiGrav | 20 |
+Базовое время захвата одинаково для всех шасси: **10 секунд**.  
+Электроника: −30% → **7 секунд**.
 
-Электроника: −30% от времени захвата.
+Робот видит структуры только в радиусе `VisionRange` (8 без электроники, 20 с электроникой).  
+При отсутствии видимых целей — исследует карту.
 
 ### 2.8 Производство ресурсов
 - 1 игровой день = 30 реальных секунд (настраивается в game.ron)
@@ -350,7 +347,7 @@ Bevy Events для межсистемного общения:
 - [x] **6.9** Нажать B рядом с варбейсом → открыть/закрыть Builder UI `[M]`
 - [x] **6.10** `ProductionQueue` с VecDeque, `tick_production_queue` (FixedUpdate) `[M]`
 - [x] **6.11** `ui/hud.rs` — Панель ресурсов: 7 типов, день, обновление в реалтайме `[M]`
-- [ ] **6.12** Перезахват: враг захватывает фабрику игрока → потеря производства. Таймер сбрасывается `[M]`
+- [x] **6.12** Перезахват: враг захватывает фабрику игрока → потеря производства. Таймер сбрасывается `[M]`
 - [ ] **6.13** Стартовые условия из scenario RON: начальные ресурсы, warbase, позиции `[M]`
 
 **Критерии проверки:**
@@ -380,7 +377,7 @@ Bevy Events для межсистемного общения:
 - [x] **7.4** ИИ постройка: `ai_build_robots` с ротацией 10 blueprint-вариантов, очередь на Enemy warbase `[M]`
 - [x] **7.5** ИИ приказы: idle роботы получают SeekAndCapture или SeekAndDestroy по utility-скорингу `[L]`
 - [x] **7.6** `configs/ai.ron` — decision_interval, build_interval, aggression, nuclear_threshold `[M]`
-- [ ] **7.7** Осведомлённость ИИ: радиус обнаружения (упрощено — ИИ видит всё) `[M]` *(global vision)*
+- [x] **7.7** Осведомлённость ИИ: VisionRange (8 без электроники / 20 с), исследование карты при отсутствии видимых целей `[M]`
 - [x] **7.8** Ядерная стратегия: `arm_nuclear_on_arrival` + постройка nuclear-робота при ≥N фабриках `[M]`
 - [x] **7.9** `check_victory_defeat` — GameResult resource, ориентируется на уничтожение варбейсов `[M]`
 - [x] **7.10** `ui/gameover.rs` — экран победы/поражения: дней, фабрик обеих сторон `[M]`
@@ -421,6 +418,11 @@ Bevy Events для межсистемного общения:
 - [ ] **8.11** Фоновая музыка: sci-fi ambient, crossfade при смене состояний `[S]` *(нужны .ogg)*
 - [x] **8.12** Выбор сценария: пикер ◀/▶ в меню, сканирует `data/scenarios/*.ron`; 2 карты `[M]`
 - [x] **8.13** Game Over → кнопки "Главное меню" / "Выход"; AppState переход `[S]`
+- [x] **8.14** `RobotCommand::DestroyEnemyBase` — ядерный робот идёт к варбейсу врага, взрывается вплотную `[M]`
+- [x] **8.15** Навигация через VisionRange: SeekAndCapture и DestroyEnemyBase исследуют карту пока цель не в видимости `[M]`
+- [x] **8.16** Ядерный взрыв поражает структуры (Factory/Warbase), не только роботов `[S]`
+- [x] **8.17** Устранены крэши: `try_insert` для всех `MovementTarget`-команд, `MuzzleFlash` `[S]`
+- [x] **8.18** Время захвата унифицировано (10 сек базово, −30% с электроникой) `[S]`
 
 **Критерии проверки:**
 - Меню функционально и стилизовано

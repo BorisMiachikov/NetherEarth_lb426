@@ -149,7 +149,6 @@ mod tests {
                 speed: 1.2,
                 mobility: 0.6,
                 can_fly: false,
-                capture_time: 15.0,
                 cost_chassis: 15,
                 cost_general: 5,
             }],

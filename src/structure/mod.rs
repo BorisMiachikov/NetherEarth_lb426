@@ -98,7 +98,7 @@ pub fn spawn_structures(
                 ft,
                 ProductionRate::default(),
                 Capturable,
-                CaptureProgress::new(12.0),
+                CaptureProgress::new(1.0),
                 team_to_core(&def.team),
                 crate::core::Health::new(200.0),
                 Mesh3d(factory_mesh.clone()),

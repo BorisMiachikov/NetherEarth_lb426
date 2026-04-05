@@ -57,7 +57,6 @@ pub fn spawn_robot(
     let max_hp = chassis_def.base_hp + slots.total_weight() * 2.0;
     let speed = chassis_def.speed;
 
-    // Рассчитать capture_time с учётом электроники
     let electronics_opt = if blueprint.has_electronics {
         Some(registry.electronics.clone())
     } else {
@@ -71,9 +70,9 @@ pub fn spawn_robot(
             .map_or(BASE_VISION_RANGE, |e| e.radar_range),
     );
     let capture_time = if let Some(ref elec) = electronics_opt {
-        chassis_def.capture_time * (1.0 - elec.capture_time_reduction)
+        crate::structure::capture::BASE_CAPTURE_TIME * (1.0 - elec.capture_time_reduction)
     } else {
-        chassis_def.capture_time
+        crate::structure::capture::BASE_CAPTURE_TIME
     };
 
     let chassis = Chassis {
@@ -81,7 +80,6 @@ pub fn spawn_robot(
         base_hp: chassis_def.base_hp,
         speed: chassis_def.speed,
         mobility: chassis_def.mobility,
-        capture_time: chassis_def.capture_time,
     };
 
     let stats = RobotStats {

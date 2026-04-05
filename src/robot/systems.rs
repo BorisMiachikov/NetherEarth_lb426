@@ -17,11 +17,11 @@ pub fn recalc_stats(
         stats.max_hp = chassis.base_hp + slots.total_weight() * 2.0;
         stats.speed = chassis.speed;
 
-        // Время захвата с учётом электроники
+        // Время захвата: базовое минус бонус электроники
         stats.capture_time = if let Some(e) = elec {
-            chassis.capture_time * (1.0 - e.capture_time_reduction)
+            crate::structure::capture::BASE_CAPTURE_TIME * (1.0 - e.capture_time_reduction)
         } else {
-            chassis.capture_time
+            crate::structure::capture::BASE_CAPTURE_TIME
         };
     }
 }

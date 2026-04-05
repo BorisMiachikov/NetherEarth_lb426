@@ -3,9 +3,9 @@ use bevy::prelude::*;
 use crate::{
     command::command::RobotCommand,
     core::Team,
-    movement::velocity::MovementTarget,
+    movement::{exploration_target, velocity::MovementTarget},
     robot::{
-        components::{Nuclear, RobotMarker},
+        components::{Nuclear, RobotMarker, VisionRange},
         registry::ModuleRegistry,
     },
     structure::{
@@ -123,7 +123,7 @@ pub fn ai_build_robots(
 pub fn ai_assign_commands(
     time: Res<Time>,
     mut ai: ResMut<AICommander>,
-    mut idle_robots: Query<(Entity, &mut RobotCommand, &Transform), With<RobotMarker>>,
+    mut idle_robots: Query<(Entity, &mut RobotCommand, &Transform, Option<&Nuclear>), With<RobotMarker>>,
     all_robots: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
     capturable: Query<(Entity, &Transform, &Team), With<Capturable>>,
     warbases: Query<(&Transform, &Team), With<Warbase>>,
@@ -164,7 +164,7 @@ pub fn ai_assign_commands(
     let threat = threat_ratio(enemy_count, friendly_count);
     let be_aggressive = threat > ai.config.aggression;
 
-    for (entity, mut cmd, robot_tf) in &mut idle_robots {
+    for (entity, mut cmd, robot_tf, nuclear) in &mut idle_robots {
         // Пропустить не-Enemy роботов
         let team = all_robots
             .iter()
@@ -174,6 +174,12 @@ pub fn ai_assign_commands(
             continue;
         }
         if !matches!(*cmd, RobotCommand::Idle) {
+            continue;
+        }
+
+        // Ядерный робот → сразу идёт уничтожать варбейс игрока
+        if nuclear.is_some() {
+            *cmd = RobotCommand::DestroyEnemyBase(None);
             continue;
         }
 
@@ -193,15 +199,9 @@ pub fn ai_assign_commands(
         // 2) Принять решение: захватывать или атаковать
         *cmd = if !be_aggressive && best_capture.is_some() {
             RobotCommand::SeekAndCapture(best_capture)
-        } else if let Some(warbase_pos) = player_warbase_pos {
-            // Агрессия: двигаться к варбейсу игрока
-            RobotCommand::SeekAndDestroy(None)
         } else {
-            RobotCommand::SeekAndCapture(best_capture)
+            RobotCommand::SeekAndDestroy(None)
         };
-
-        // SeekAndDestroy(None) — update_seek_destroy найдёт цель с учётом VisionRange.
-        // Если видимых врагов нет — робот будет исследовать карту.
     }
 }
 
@@ -254,7 +254,7 @@ pub fn update_seek_destroy(
 
             if needs_update {
                 *cmd = RobotCommand::SeekAndDestroy(Some(target_e));
-                commands.entity(entity).insert(MovementTarget(target_pos));
+                commands.entity(entity).try_insert(MovementTarget(target_pos));
             }
         } else {
             // Врагов не видно — исследуем карту
@@ -263,64 +263,96 @@ pub fn update_seek_destroy(
 
             if near_target {
                 let explore = exploration_target(entity, robot_pos, map.width, map.height);
-                commands.entity(entity).insert(MovementTarget(explore));
+                commands.entity(entity).try_insert(MovementTarget(explore));
             }
             // Если ещё идём к точке исследования — не прерываем
         }
     }
 }
 
-/// Выбирает точку исследования в квадранте, противоположном текущей позиции.
-/// Детерминировано по entity id + текущей позиции.
-fn exploration_target(entity: Entity, pos: Vec3, map_w: u32, map_h: u32) -> Vec3 {
-    use crate::map::grid::CELL_SIZE;
 
-    let half_w = (map_w / 2).max(1);
-    let half_h = (map_h / 2).max(1);
+// ── Навигация к варбейсу ────────────────────────────────────────────────────
 
-    // Противоположный квадрант
-    let x_base = if pos.x < half_w as f32 { half_w } else { 0 };
-    let z_base = if pos.z < half_h as f32 { half_h } else { 0 };
+/// Направляет роботов с приказом DestroyEnemyBase к вражескому варбейсу.
+/// Варбейс должен быть в радиусе видимости — иначе исследует карту.
+pub fn seek_destroy_base(
+    mut commands: Commands,
+    mut robots: Query<
+        (Entity, &mut RobotCommand, &Transform, &Team, &Nuclear, &VisionRange, Option<&MovementTarget>),
+        With<RobotMarker>,
+    >,
+    warbases: Query<(Entity, &Transform, &Team), With<Warbase>>,
+    map: Res<crate::map::grid::MapGrid>,
+) {
+    for (entity, mut cmd, tf, robot_team, nuc, vision, cur_target) in &mut robots {
+        let RobotCommand::DestroyEnemyBase(ref mut target_opt) = *cmd else {
+            continue;
+        };
 
-    // Псевдослучайный сдвиг внутри квадранта
-    let seed = (entity.to_bits() as u32)
-        .wrapping_mul(2654435761)
-        .wrapping_add(pos.x as u32)
-        .wrapping_add(pos.z as u32);
-    let dx = seed % half_w;
-    let dz = seed.wrapping_mul(2246822519) % half_h;
+        let robot_pos = tf.translation;
 
-    Vec3::new(
-        (x_base + dx) as f32 * CELL_SIZE,
-        0.3,
-        (z_base + dz) as f32 * CELL_SIZE,
-    )
+        // Вражеский варбейс в радиусе видимости
+        let visible_warbase = target_opt
+            .and_then(|e| warbases.get(e).ok())
+            .filter(|(_, _, t)| **t != *robot_team)
+            .filter(|(_, t, _)| robot_pos.distance(t.translation) <= vision.0)
+            .map(|(e, t, _)| (e, t.translation))
+            .or_else(|| {
+                warbases
+                    .iter()
+                    .filter(|(_, _, t)| **t != *robot_team)
+                    .find(|(_, t, _)| robot_pos.distance(t.translation) <= vision.0)
+                    .map(|(e, t, _)| (e, t.translation))
+            });
+
+        if let Some((wb_entity, wb_pos)) = visible_warbase {
+            if *target_opt != Some(wb_entity) {
+                *target_opt = Some(wb_entity);
+            }
+            let dist = robot_pos.distance(wb_pos);
+            if dist <= nuc.blast_radius * 0.5 {
+                commands.entity(entity).remove::<MovementTarget>();
+            } else {
+                commands.entity(entity).try_insert(MovementTarget(wb_pos));
+            }
+        } else {
+            // Варбейс не виден — исследовать карту
+            let near_target = cur_target
+                .map_or(true, |t| robot_pos.xz().distance(t.0.xz()) < 2.0);
+            if near_target {
+                let explore = exploration_target(entity, robot_pos, map.width, map.height);
+                commands.entity(entity).try_insert(MovementTarget(explore));
+            }
+        }
+    }
 }
 
-// ── Ядерный детонатор (7.8) ──────────────────────────────────────────────────
+// ── Ядерный детонатор ────────────────────────────────────────────────────────
 
-/// Робот с ядерным зарядом без активного MovementTarget вблизи вражеского варбейса —
-/// самоуничтожается, вызывая ядерный взрыв.
+/// Робот с приказом DestroyEnemyBase без активного MovementTarget вблизи варбейса —
+/// взводит ядерный заряд и самоуничтожается.
 pub fn arm_nuclear_on_arrival(
     nuclear_robots: Query<
-        (Entity, &Transform, &Nuclear, &Team),
+        (Entity, &Transform, &Nuclear, &Team, &RobotCommand),
         (With<RobotMarker>, Without<MovementTarget>),
     >,
     warbases: Query<(&Transform, &Team), With<Warbase>>,
     mut commands: Commands,
 ) {
-    for (entity, tf, nuc, robot_team) in &nuclear_robots {
+    for (entity, tf, nuc, robot_team, cmd) in &nuclear_robots {
         if nuc.armed {
+            continue;
+        }
+        if !matches!(cmd, RobotCommand::DestroyEnemyBase(_)) {
             continue;
         }
         let near_enemy_warbase = warbases.iter().any(|(wb_tf, wb_team)| {
             *wb_team != *robot_team
-                && tf.translation.distance(wb_tf.translation) <= nuc.blast_radius * 1.5
+                && tf.translation.distance(wb_tf.translation) <= nuc.blast_radius * 0.5
         });
 
         if near_enemy_warbase {
-            info!("Ядерный заряд активирован!");
-            // Взвести и уничтожить себя
+            info!("Ядерный заряд активирован у варбейса!");
             let mut armed_nuc = nuc.clone();
             armed_nuc.armed = true;
             commands.entity(entity).insert(armed_nuc);

@@ -7,6 +7,8 @@ pub enum RobotCommand {
     MoveTo(Vec3),
     SeekAndDestroy(Option<Entity>),
     SeekAndCapture(Option<Entity>),
+    /// Только для роботов с ядерным зарядом: идёт к вражескому варбейсу и взрывается.
+    DestroyEnemyBase(Option<Entity>),
     Defend(Vec3),
     Patrol(Vec<Vec3>),
 }

@@ -12,7 +12,6 @@ pub struct ChassisDef {
     pub speed: f32,
     pub mobility: f32,
     pub can_fly: bool,
-    pub capture_time: f32,
     pub cost_chassis: u32,
     pub cost_general: u32,
 }

@@ -5,7 +5,7 @@ use crate::{
     camera::systems::IsometricCamera,
     command::command::RobotCommand,
     core::{Health, Team},
-    robot::components::{Chassis, ChassisType, RobotMarker, WeaponSlots},
+    robot::components::{Chassis, ChassisType, Nuclear, RobotMarker, WeaponSlots},
 };
 
 use super::selection::{Selected, SelectionState};
@@ -67,6 +67,7 @@ struct SingleInfo {
     hp: f32,
     hp_max: f32,
     weapons: usize,
+    has_nuclear: bool,
     cmd: &'static str,
     pos: Vec3,
 }
@@ -79,7 +80,8 @@ struct MultiInfo {
     bipod: usize,
     tracks: usize,
     antigrav: usize,
-    cmd_counts: [(&'static str, usize); 6],
+    has_nuclear: bool,
+    cmd_counts: [(&'static str, usize); 7],
 }
 
 /// Панель информации о выбранных роботах + кнопки команд.
@@ -94,6 +96,7 @@ pub fn robot_info_panel(
             &Chassis,
             &WeaponSlots,
             &Team,
+            Option<&Nuclear>,
         ),
         With<Selected>,
     >,
@@ -111,12 +114,13 @@ pub fn robot_info_panel(
     let multi: Option<MultiInfo>;
 
     if count == 1 {
-        single = robots.single().ok().map(|(cmd, tf, hp, chassis, weapons, team)| SingleInfo {
+        single = robots.single().ok().map(|(cmd, tf, hp, chassis, weapons, team, nuc)| SingleInfo {
             chassis: chassis.chassis_type,
             team: *team,
             hp: hp.current,
             hp_max: hp.max,
             weapons: weapons.count(),
+            has_nuclear: nuc.is_some(),
             cmd: cmd_label(&cmd),
             pos: tf.translation,
         });
@@ -129,13 +133,15 @@ pub fn robot_info_panel(
         let mut bipod = 0usize;
         let mut tracks = 0usize;
         let mut antigrav = 0usize;
+        let mut has_nuclear = false;
         let cmds_order = [
-            "Idle", "MoveTo", "SeekAndDestroy", "SeekAndCapture", "Defend", "Patrol",
+            "Idle", "MoveTo", "SeekAndDestroy", "SeekAndCapture", "DestroyEnemyBase", "Defend", "Patrol",
         ];
-        let mut cmd_counts = [0usize; 6];
+        let mut cmd_counts = [0usize; 7];
 
-        for (cmd, _, hp, chassis, _, _) in robots.iter() {
+        for (cmd, _, hp, chassis, _, _, nuc) in robots.iter() {
             total_hp_pct += hp.current / hp.max.max(1.0);
+            if nuc.is_some() { has_nuclear = true; }
             match chassis.chassis_type {
                 ChassisType::Wheels   => wheels += 1,
                 ChassisType::Bipod    => bipod += 1,
@@ -155,6 +161,7 @@ pub fn robot_info_panel(
             bipod,
             tracks,
             antigrav,
+            has_nuclear,
             cmd_counts: cmds_order
                 .iter()
                 .zip(cmd_counts.iter())
@@ -166,6 +173,10 @@ pub fn robot_info_panel(
     }
 
     let mut new_cmd: Option<RobotCommand> = None;
+
+    // Есть ли ядерный заряд среди выбранных
+    let any_nuclear = single.as_ref().map_or(false, |s| s.has_nuclear)
+        || multi.as_ref().map_or(false, |m| m.has_nuclear);
 
     egui::Window::new("Юниты")
         .id(egui::Id::new("robot_panel"))
@@ -286,12 +297,17 @@ pub fn robot_info_panel(
                     new_cmd = Some(RobotCommand::SeekAndCapture(None));
                 }
                 if cols[1].button("⬡ Держать").clicked() {
-                    new_cmd = Some(RobotCommand::Defend(Vec3::ZERO)); // pos заменяется ниже
+                    new_cmd = Some(RobotCommand::Defend(Vec3::ZERO));
                 }
                 if cols[1].button("◻ Стоп").clicked() {
                     new_cmd = Some(RobotCommand::Idle);
                 }
             });
+            if any_nuclear {
+                if ui.button("☢ Уничтожить базу").clicked() {
+                    new_cmd = Some(RobotCommand::DestroyEnemyBase(None));
+                }
+            }
 
             ui.label(
                 egui::RichText::new("ПКМ = Двигаться  |  P+ПКМ = Патруль")
@@ -323,12 +339,13 @@ pub fn robot_info_panel(
 
 fn cmd_label(cmd: &RobotCommand) -> &'static str {
     match cmd {
-        RobotCommand::Idle              => "Idle",
-        RobotCommand::MoveTo(_)         => "MoveTo",
-        RobotCommand::SeekAndDestroy(_) => "SeekAndDestroy",
-        RobotCommand::SeekAndCapture(_) => "SeekAndCapture",
-        RobotCommand::Defend(_)         => "Defend",
-        RobotCommand::Patrol(_)         => "Patrol",
+        RobotCommand::Idle                => "Idle",
+        RobotCommand::MoveTo(_)           => "MoveTo",
+        RobotCommand::SeekAndDestroy(_)   => "SeekAndDestroy",
+        RobotCommand::SeekAndCapture(_)   => "SeekAndCapture",
+        RobotCommand::DestroyEnemyBase(_) => "DestroyEnemyBase",
+        RobotCommand::Defend(_)           => "Defend",
+        RobotCommand::Patrol(_)           => "Patrol",
     }
 }
 

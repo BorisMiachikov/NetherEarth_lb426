@@ -16,7 +16,7 @@ pub fn process_commands(
     for (entity, cmd, _tf, _team) in &query {
         match cmd {
             RobotCommand::MoveTo(target) => {
-                commands.entity(entity).insert(MovementTarget(*target));
+                commands.entity(entity).try_insert(MovementTarget(*target));
             }
             RobotCommand::Idle => {
                 commands
@@ -31,12 +31,15 @@ pub fn process_commands(
             RobotCommand::SeekAndCapture(_) => {
                 // Навигация — seek_capture_navigation (FixedUpdate)
             }
+            RobotCommand::DestroyEnemyBase(_) => {
+                // Навигация — seek_destroy_base (FixedUpdate)
+            }
             RobotCommand::Defend(pos) => {
-                commands.entity(entity).insert(MovementTarget(*pos));
+                commands.entity(entity).try_insert(MovementTarget(*pos));
             }
             RobotCommand::Patrol(points) => {
                 if !points.is_empty() {
-                    commands.entity(entity).insert(MovementTarget(points[0]));
+                    commands.entity(entity).try_insert(MovementTarget(points[0]));
                 }
             }
         }
@@ -71,7 +74,7 @@ pub fn update_patrol(
             // Перейти к следующей точке
             let next = (closest + 1) % points.len();
             let next_pos = points[next];
-            commands.entity(entity).insert(MovementTarget(next_pos));
+            commands.entity(entity).try_insert(MovementTarget(next_pos));
         }
     }
 }
