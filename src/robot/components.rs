@@ -122,6 +122,13 @@ impl Default for Nuclear {
     }
 }
 
+/// Дальность обнаружения врагов.
+/// Без электроники — BASE_VISION_RANGE; с электроникой — Electronics::radar_range.
+pub const BASE_VISION_RANGE: f32 = 8.0;
+
+#[derive(Component, Debug, Clone)]
+pub struct VisionRange(pub f32);
+
 /// Расчётные характеристики робота (пересчитываются при изменении модулей).
 #[derive(Component, Debug, Clone, Default)]
 pub struct RobotStats {

@@ -200,78 +200,101 @@ pub fn ai_assign_commands(
             RobotCommand::SeekAndCapture(best_capture)
         };
 
-        // Для SeekAndDestroy сразу назначим MovementTarget к варбейсу
-        if matches!(*cmd, RobotCommand::SeekAndDestroy(_)) {
-            if let Some(pos) = player_warbase_pos {
-                // Ищем ближайшего врага, иначе идём к варбейсу
-                let nearest_enemy = all_robots
-                    .iter()
-                    .filter(|(e, _, t)| *e != entity && **t == Team::Player)
-                    .min_by_key(|(_, tf, _)| {
-                        (tf.translation.distance(robot_tf.translation) * 100.0) as u32
-                    })
-                    .map(|(e, tf, _)| (e, tf.translation));
+        // SeekAndDestroy(None) — update_seek_destroy найдёт цель с учётом VisionRange.
+        // Если видимых врагов нет — робот будет исследовать карту.
+    }
+}
 
-                if let Some((target_e, target_pos)) = nearest_enemy {
-                    *cmd = RobotCommand::SeekAndDestroy(Some(target_e));
-                    // MovementTarget будет выставлен через update_seek_destroy
-                } else {
-                    // Нет врагов — двигаться к варбейсу
-                    *cmd = RobotCommand::MoveTo(pos);
-                }
+// ── Обновление SeekAndDestroy (7.11 + видимость) ────────────────────────────
+
+/// Управляет роботами с приказом SeekAndDestroy:
+/// - ищет врагов в радиусе VisionRange
+/// - при обнаружении — преследует
+/// - при отсутствии видимых врагов — исследует карту (exploration)
+pub fn update_seek_destroy(
+    mut commands: Commands,
+    mut seekers: Query<
+        (Entity, &mut RobotCommand, &Transform, &Team, &crate::robot::components::VisionRange),
+        With<RobotMarker>,
+    >,
+    mov_targets: Query<Option<&MovementTarget>, With<RobotMarker>>,
+    all_robots: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
+    map: Res<crate::map::grid::MapGrid>,
+) {
+    // Иммутабельный снапшот: только роботы с SeekAndDestroy
+    let snapshot: Vec<(Entity, Vec3, Team, f32, Option<Entity>, Option<Vec3>)> = seekers
+        .iter()
+        .filter_map(|(entity, cmd, tf, team, vision)| {
+            let RobotCommand::SeekAndDestroy(tracked) = *cmd else {
+                return None;
+            };
+            let current_mov = mov_targets.get(entity).ok().flatten().map(|m| m.0);
+            Some((entity, tf.translation, *team, vision.0, tracked, current_mov))
+        })
+        .collect();
+
+    for (entity, robot_pos, team, vision_range, tracked_opt, current_mov) in snapshot {
+        // Ищем ближайшего видимого врага
+        let visible_enemy = all_robots
+            .iter()
+            .filter(|(e, _, t)| *e != entity && **t != team)
+            .filter(|(_, t, _)| robot_pos.distance(t.translation) <= vision_range)
+            .min_by_key(|(_, t, _)| (robot_pos.distance(t.translation) * 100.0) as u32)
+            .map(|(e, t, _)| (e, t.translation));
+
+        let Ok((_, mut cmd, _, _, _)) = seekers.get_mut(entity) else {
+            continue;
+        };
+
+        if let Some((target_e, target_pos)) = visible_enemy {
+            // Враг виден — преследуем. Обновляем путь только если цель изменилась
+            // или значительно сдвинулась (> 3 units), чтобы не гонять A* каждый кадр.
+            let needs_update = tracked_opt != Some(target_e)
+                || current_mov.map_or(true, |p| p.distance(target_pos) > 3.0);
+
+            if needs_update {
+                *cmd = RobotCommand::SeekAndDestroy(Some(target_e));
+                commands.entity(entity).insert(MovementTarget(target_pos));
             }
+        } else {
+            // Врагов не видно — исследуем карту
+            let near_target = current_mov
+                .map_or(true, |t| robot_pos.xz().distance(t.xz()) < 2.0);
+
+            if near_target {
+                let explore = exploration_target(entity, robot_pos, map.width, map.height);
+                commands.entity(entity).insert(MovementTarget(explore));
+            }
+            // Если ещё идём к точке исследования — не прерываем
         }
     }
 }
 
-// ── Обновление SeekAndDestroy (7.11) ────────────────────────────────────────
+/// Выбирает точку исследования в квадранте, противоположном текущей позиции.
+/// Детерминировано по entity id + текущей позиции.
+fn exploration_target(entity: Entity, pos: Vec3, map_w: u32, map_h: u32) -> Vec3 {
+    use crate::map::grid::CELL_SIZE;
 
-/// Непрерывно проверяет цель SeekAndDestroy: если цель исчезла — найти новую.
-pub fn update_seek_destroy(
-    mut commands: Commands,
-    mut robots: Query<(Entity, &mut RobotCommand, &Transform, &Team), With<RobotMarker>>,
-    all_robots: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
-) {
-    // Собрать Entity → позиция/команда для роботов с SeekAndDestroy
-    let updates: Vec<(Entity, Option<(Entity, Vec3)>)> = robots
-        .iter()
-        .filter_map(|(entity, cmd, tf, team)| {
-            let RobotCommand::SeekAndDestroy(target_opt) = &*cmd else {
-                return None;
-            };
+    let half_w = (map_w / 2).max(1);
+    let half_h = (map_h / 2).max(1);
 
-            let target_valid = target_opt
-                .map(|t| all_robots.get(t).is_ok())
-                .unwrap_or(false);
+    // Противоположный квадрант
+    let x_base = if pos.x < half_w as f32 { half_w } else { 0 };
+    let z_base = if pos.z < half_h as f32 { half_h } else { 0 };
 
-            if target_valid {
-                return None; // Цель жива, ничего не делаем
-            }
+    // Псевдослучайный сдвиг внутри квадранта
+    let seed = (entity.to_bits() as u32)
+        .wrapping_mul(2654435761)
+        .wrapping_add(pos.x as u32)
+        .wrapping_add(pos.z as u32);
+    let dx = seed % half_w;
+    let dz = seed.wrapping_mul(2246822519) % half_h;
 
-            // Найти нового врага
-            let new_target = all_robots
-                .iter()
-                .filter(|(e, _, t)| *e != entity && **t != *team)
-                .min_by_key(|(_, t, _)| {
-                    (t.translation.distance(tf.translation) * 100.0) as u32
-                })
-                .map(|(e, t, _)| (e, t.translation));
-
-            Some((entity, new_target))
-        })
-        .collect();
-
-    for (entity, new_target) in updates {
-        let Ok((_, mut cmd, _, _)) = robots.get_mut(entity) else {
-            continue;
-        };
-        if let Some((target_e, target_pos)) = new_target {
-            *cmd = RobotCommand::SeekAndDestroy(Some(target_e));
-            commands.entity(entity).insert(MovementTarget(target_pos));
-        } else {
-            *cmd = RobotCommand::Idle;
-        }
-    }
+    Vec3::new(
+        (x_base + dx) as f32 * CELL_SIZE,
+        0.3,
+        (z_base + dz) as f32 * CELL_SIZE,
+    )
 }
 
 // ── Ядерный детонатор (7.8) ──────────────────────────────────────────────────

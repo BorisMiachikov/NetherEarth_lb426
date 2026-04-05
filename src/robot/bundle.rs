@@ -6,7 +6,8 @@ use crate::core::{Health, Team};
 use super::{
     builder::RobotBlueprint,
     components::{
-        Chassis, ChassisType, Electronics, Nuclear, RobotMarker, RobotStats, WeaponSlots,
+        Chassis, ChassisType, Electronics, Nuclear, RobotMarker, RobotStats, VisionRange,
+        WeaponSlots, BASE_VISION_RANGE,
     },
     registry::ModuleRegistry,
 };
@@ -62,6 +63,13 @@ pub fn spawn_robot(
     } else {
         None
     };
+
+    // Дальность обнаружения: с электроникой — radar_range, без — базовая
+    let vision_range = VisionRange(
+        electronics_opt
+            .as_ref()
+            .map_or(BASE_VISION_RANGE, |e| e.radar_range),
+    );
     let capture_time = if let Some(ref elec) = electronics_opt {
         chassis_def.capture_time * (1.0 - elec.capture_time_reduction)
     } else {
@@ -105,7 +113,7 @@ pub fn spawn_robot(
         MeshMaterial3d(mat),
         Transform::from_translation(pos),
     ));
-    entity.insert(WeaponCooldowns::default());
+    entity.insert((WeaponCooldowns::default(), vision_range));
 
     if let Some(elec) = electronics_opt {
         entity.insert(Electronics {
