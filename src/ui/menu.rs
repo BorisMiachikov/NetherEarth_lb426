@@ -140,7 +140,9 @@ pub fn draw_main_menu(
                 .stroke(egui::Stroke::new(2.0, egui::Color32::from_rgb(60, 120, 200))),
         )
         .show(ctx, |ui| {
-            ui.set_min_width(280.0);
+            // Фиксированная ширина окна меню
+            ui.set_width(260.0);
+
             ui.vertical_centered(|ui| {
                 ui.add_space(16.0);
                 ui.label(
@@ -154,10 +156,11 @@ pub fn draw_main_menu(
                         .size(13.0)
                         .color(egui::Color32::GRAY),
                 );
-                ui.add_space(20.0);
+                ui.add_space(16.0);
             });
 
             ui.separator();
+            ui.add_space(6.0);
 
             // --- Выбор сценария ---
             ui.label(
@@ -165,40 +168,48 @@ pub fn draw_main_menu(
                     .small()
                     .color(egui::Color32::DARK_GRAY),
             );
+            ui.add_space(2.0);
 
             let scenario_count = scenarios.scenarios.len();
             if scenario_count > 1 {
+                // Кнопки ◀ / имя / ▶ — фиксированная строка
                 ui.horizontal(|ui| {
-                    if ui.button("◀").clicked() && scenarios.selected > 0 {
+                    let prev_ok = scenarios.selected > 0;
+                    if ui.add_enabled(prev_ok, egui::Button::new("◀")).clicked() {
                         scenarios.selected -= 1;
                     }
-                    ui.vertical_centered(|ui| {
-                        ui.set_min_width(180.0);
-                        ui.label(
+                    // имя сценария — занимает фиксированную ширину
+                    let name_w = 200.0 - 28.0 * 2.0; // ширина минус обе кнопки
+                    ui.add_sized(
+                        [name_w, 18.0],
+                        egui::Label::new(
                             egui::RichText::new(&scenarios.current().name)
                                 .strong()
                                 .color(egui::Color32::WHITE),
-                        );
-                    });
-                    if ui.button("▶").clicked() && scenarios.selected + 1 < scenario_count {
+                        ),
+                    );
+                    let next_ok = scenarios.selected + 1 < scenario_count;
+                    if ui.add_enabled(next_ok, egui::Button::new("▶")).clicked() {
                         scenarios.selected += 1;
                     }
                 });
-                ui.label(
-                    egui::RichText::new(&scenarios.current().description)
-                        .small()
-                        .color(egui::Color32::GRAY),
-                );
-            } else {
-                ui.label(
-                    egui::RichText::new(
-                        scenarios.scenarios.first().map_or("—", |s| &s.name),
+                // Описание — обёрнутое, не растягивает окно
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(&scenarios.current().description)
+                            .small()
+                            .color(egui::Color32::GRAY),
                     )
-                    .color(egui::Color32::WHITE),
+                    .wrap(),
+                );
+            } else if let Some(s) = scenarios.scenarios.first() {
+                ui.label(
+                    egui::RichText::new(&s.name)
+                        .color(egui::Color32::WHITE),
                 );
             }
 
-            ui.add_space(16.0);
+            ui.add_space(14.0);
 
             ui.vertical_centered(|ui| {
                 if ui
