@@ -1,0 +1,26 @@
+(
+    width: 64,
+    height: 64,
+    cells: [],
+    player_spawn: (x: 5, y: 5),
+    factories: [
+        // Кластер на севере
+        (x: 12, y: 10, factory_type: Chassis,     team: Neutral),
+        (x: 18, y: 8,  factory_type: Cannon,       team: Neutral),
+        (x: 24, y: 12, factory_type: Missile,      team: Neutral),
+        // Центр
+        (x: 30, y: 30, factory_type: General,      team: Neutral),
+        (x: 35, y: 28, factory_type: Electronics,  team: Neutral),
+        // Кластер на юге
+        (x: 40, y: 48, factory_type: Phasers,      team: Neutral),
+        (x: 46, y: 52, factory_type: Nuclear,      team: Neutral),
+        (x: 52, y: 44, factory_type: General,      team: Neutral),
+        // Ещё две спорные
+        (x: 10, y: 50, factory_type: Chassis,      team: Neutral),
+        (x: 54, y: 14, factory_type: Cannon,       team: Neutral),
+    ],
+    warbases: [
+        (x: 8,  y: 8,  team: Player),
+        (x: 56, y: 56, team: Enemy),
+    ],
+)

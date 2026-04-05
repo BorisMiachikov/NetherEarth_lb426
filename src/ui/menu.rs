@@ -1,7 +1,79 @@
 use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
+use serde::Deserialize;
 
 use crate::app::state::AppState;
+
+// ---------------------------------------------------------------------------
+// Ресурс: выбранный сценарий
+// ---------------------------------------------------------------------------
+
+/// Описание одного сценария (десериализуется из data/scenarios/*.ron).
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScenarioDef {
+    pub name: String,
+    pub description: String,
+    pub map_path: String,
+}
+
+/// Список доступных сценариев и индекс выбранного.
+#[derive(Resource)]
+pub struct ScenarioList {
+    pub scenarios: Vec<ScenarioDef>,
+    pub selected: usize,
+}
+
+impl ScenarioList {
+    /// Сканирует `data/scenarios/` и загружает все .ron файлы.
+    pub fn load_from_dir() -> Self {
+        let mut scenarios: Vec<ScenarioDef> = Vec::new();
+
+        if let Ok(entries) = std::fs::read_dir("data/scenarios") {
+            let mut paths: Vec<_> = entries
+                .filter_map(|e| e.ok())
+                .map(|e| e.path())
+                .filter(|p| p.extension().map_or(false, |ext| ext == "ron"))
+                .collect();
+            paths.sort();
+
+            for path in paths {
+                match std::fs::read_to_string(&path) {
+                    Ok(content) => match ron::from_str::<ScenarioDef>(&content) {
+                        Ok(def) => scenarios.push(def),
+                        Err(e) => warn!("Ошибка парсинга {:?}: {e}", path),
+                    },
+                    Err(e) => warn!("Не удалось прочитать {:?}: {e}", path),
+                }
+            }
+        }
+
+        if scenarios.is_empty() {
+            // Фоллбэк: всегда есть дефолтная карта
+            scenarios.push(ScenarioDef {
+                name: "Стандартная схватка".into(),
+                description: "8 нейтральных фабрик.".into(),
+                map_path: "data/maps/default.ron".into(),
+            });
+        }
+
+        Self {
+            scenarios,
+            selected: 0,
+        }
+    }
+
+    pub fn current(&self) -> &ScenarioDef {
+        &self.scenarios[self.selected]
+    }
+}
+
+/// Ресурс: путь к карте активной игры (используется MapPlugin при Startup).
+#[derive(Resource, Default)]
+pub struct SelectedMapPath(pub String);
+
+// ---------------------------------------------------------------------------
+// Системы меню
+// ---------------------------------------------------------------------------
 
 /// Система запуска: Loading → MainMenu.
 pub fn init_to_main_menu(mut next_state: ResMut<NextState<AppState>>) {
@@ -36,6 +108,7 @@ pub fn draw_main_menu(
     state: Res<State<AppState>>,
     mut next_state: ResMut<NextState<AppState>>,
     mut contexts: EguiContexts,
+    mut scenarios: ResMut<ScenarioList>,
     mut exit: MessageWriter<AppExit>,
 ) -> Result {
     if *state.get() != AppState::MainMenu {
@@ -67,7 +140,7 @@ pub fn draw_main_menu(
                 .stroke(egui::Stroke::new(2.0, egui::Color32::from_rgb(60, 120, 200))),
         )
         .show(ctx, |ui| {
-            ui.set_min_width(240.0);
+            ui.set_min_width(280.0);
             ui.vertical_centered(|ui| {
                 ui.add_space(16.0);
                 ui.label(
@@ -81,22 +154,67 @@ pub fn draw_main_menu(
                         .size(13.0)
                         .color(egui::Color32::GRAY),
                 );
-                ui.add_space(28.0);
+                ui.add_space(20.0);
+            });
 
+            ui.separator();
+
+            // --- Выбор сценария ---
+            ui.label(
+                egui::RichText::new("СЦЕНАРИЙ")
+                    .small()
+                    .color(egui::Color32::DARK_GRAY),
+            );
+
+            let scenario_count = scenarios.scenarios.len();
+            if scenario_count > 1 {
+                ui.horizontal(|ui| {
+                    if ui.button("◀").clicked() && scenarios.selected > 0 {
+                        scenarios.selected -= 1;
+                    }
+                    ui.vertical_centered(|ui| {
+                        ui.set_min_width(180.0);
+                        ui.label(
+                            egui::RichText::new(&scenarios.current().name)
+                                .strong()
+                                .color(egui::Color32::WHITE),
+                        );
+                    });
+                    if ui.button("▶").clicked() && scenarios.selected + 1 < scenario_count {
+                        scenarios.selected += 1;
+                    }
+                });
+                ui.label(
+                    egui::RichText::new(&scenarios.current().description)
+                        .small()
+                        .color(egui::Color32::GRAY),
+                );
+            } else {
+                ui.label(
+                    egui::RichText::new(
+                        scenarios.scenarios.first().map_or("—", |s| &s.name),
+                    )
+                    .color(egui::Color32::WHITE),
+                );
+            }
+
+            ui.add_space(16.0);
+
+            ui.vertical_centered(|ui| {
                 if ui
-                    .add_sized([190.0, 38.0], egui::Button::new("▶  Новая игра"))
+                    .add_sized([200.0, 38.0], egui::Button::new("▶  Новая игра"))
                     .clicked()
                 {
                     next_state.set(AppState::Playing);
                 }
-                ui.add_space(10.0);
+                ui.add_space(8.0);
                 if ui
-                    .add_sized([190.0, 38.0], egui::Button::new("✕  Выход"))
+                    .add_sized([200.0, 38.0], egui::Button::new("✕  Выход"))
                     .clicked()
                 {
                     exit.write(AppExit::Success);
                 }
-                ui.add_space(16.0);
+                ui.add_space(14.0);
             });
         });
 

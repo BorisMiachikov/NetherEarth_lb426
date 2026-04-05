@@ -10,7 +10,7 @@ use bevy_egui::EguiPrimaryContextPass;
 use builder_ui::{draw_builder_ui, open_builder_input, BuilderUiState};
 use gameover::draw_gameover_screen;
 use hud::draw_resource_hud;
-use menu::{draw_main_menu, draw_pause_menu, init_to_main_menu, toggle_pause};
+use menu::{draw_main_menu, draw_pause_menu, init_to_main_menu, toggle_pause, ScenarioList};
 use minimap::draw_minimap;
 
 use crate::app::state::AppState;
@@ -27,7 +27,8 @@ pub struct UiPlugin;
 
 impl Plugin for UiPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<BuilderUiState>()
+        app.insert_resource(ScenarioList::load_from_dir())
+            .init_resource::<BuilderUiState>()
             // Начальный переход: Loading → MainMenu
             .add_systems(OnEnter(AppState::Loading), init_to_main_menu)
             // Системы без egui — в Update

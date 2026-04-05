@@ -1,11 +1,11 @@
 use bevy::prelude::*;
-use bevy_egui::{EguiContexts, egui};
+use bevy_egui::{egui, EguiContexts};
 
 use crate::{
     camera::systems::IsometricCamera,
     command::command::RobotCommand,
-    core::Team,
-    robot::components::RobotMarker,
+    core::{Health, Team},
+    robot::components::{Chassis, ChassisType, RobotMarker, WeaponSlots},
 };
 
 use super::selection::{Selected, SelectionState};
@@ -35,7 +35,6 @@ pub fn right_click_move(
     let Some(cursor) = window.cursor_position() else { return };
     let Ok((camera, cam_tf)) = camera_q.single() else { return };
     let Ok(ray) = camera.viewport_to_world(cam_tf, cursor) else { return };
-
     let Some(ground_hit) = ray.intersect_plane(Vec3::ZERO, InfinitePlane3d::new(Vec3::Y)) else {
         return;
     };
@@ -61,13 +60,41 @@ pub fn right_click_move(
     }
 }
 
-/// Панель информации о выбранном роботе + кнопки команд.
+/// Сводная информация по одному роботу.
+struct SingleInfo {
+    chassis: ChassisType,
+    team: Team,
+    hp: f32,
+    hp_max: f32,
+    weapons: usize,
+    cmd: &'static str,
+    pos: Vec3,
+}
+
+/// Сводная информация по нескольким роботам.
+struct MultiInfo {
+    count: usize,
+    avg_hp_pct: f32,
+    wheels: usize,
+    bipod: usize,
+    tracks: usize,
+    antigrav: usize,
+    cmd_counts: [(&'static str, usize); 6],
+}
+
+/// Панель информации о выбранных роботах + кнопки команд.
 pub fn robot_info_panel(
     mut contexts: EguiContexts,
     selection: Res<SelectionState>,
     mut robots: Query<
-        (&mut RobotCommand, &Transform, &crate::core::Health, &crate::robot::components::Chassis,
-         &crate::robot::components::WeaponSlots, &Team),
+        (
+            &mut RobotCommand,
+            &Transform,
+            &Health,
+            &Chassis,
+            &WeaponSlots,
+            &Team,
+        ),
         With<Selected>,
     >,
     cmd_ui: Res<CommandUiState>,
@@ -77,74 +104,217 @@ pub fn robot_info_panel(
     }
 
     let ctx = contexts.ctx_mut()?;
+    let count = selection.selected.len();
 
-    // Собираем данные для отображения и список нажатых кнопок
-    let mut new_cmd: Option<RobotCommand> = None;
-    let (display_info, show_patrol) = if let Ok((cmd, tf, health, chassis, weapons, team)) = robots.single() {
-        (
-            Some((
-                format!("Шасси: {:?}", chassis.chassis_type),
-                format!("Команда: {team:?}"),
-                format!("HP: {:.0} / {:.0}", health.current, health.max),
-                format!("Оружия: {}", weapons.count()),
-                format!("Приказ: {}", cmd_label(&cmd)),
-                tf.translation,
-            )),
-            cmd_ui.show_patrol_hint,
-        )
+    // Собираем данные (иммутабельный проход)
+    let single: Option<SingleInfo>;
+    let multi: Option<MultiInfo>;
+
+    if count == 1 {
+        single = robots.single().ok().map(|(cmd, tf, hp, chassis, weapons, team)| SingleInfo {
+            chassis: chassis.chassis_type,
+            team: *team,
+            hp: hp.current,
+            hp_max: hp.max,
+            weapons: weapons.count(),
+            cmd: cmd_label(&cmd),
+            pos: tf.translation,
+        });
+        multi = None;
     } else {
-        (None, false)
-    };
+        single = None;
 
-    egui::Window::new("Выбранный робот")
-        .default_pos([10.0, 350.0])
+        let mut total_hp_pct = 0.0f32;
+        let mut wheels = 0usize;
+        let mut bipod = 0usize;
+        let mut tracks = 0usize;
+        let mut antigrav = 0usize;
+        let cmds_order = [
+            "Idle", "MoveTo", "SeekAndDestroy", "SeekAndCapture", "Defend", "Patrol",
+        ];
+        let mut cmd_counts = [0usize; 6];
+
+        for (cmd, _, hp, chassis, _, _) in robots.iter() {
+            total_hp_pct += hp.current / hp.max.max(1.0);
+            match chassis.chassis_type {
+                ChassisType::Wheels   => wheels += 1,
+                ChassisType::Bipod    => bipod += 1,
+                ChassisType::Tracks   => tracks += 1,
+                ChassisType::AntiGrav => antigrav += 1,
+            }
+            let label = cmd_label(&cmd);
+            if let Some(idx) = cmds_order.iter().position(|&c| c == label) {
+                cmd_counts[idx] += 1;
+            }
+        }
+
+        multi = Some(MultiInfo {
+            count,
+            avg_hp_pct: total_hp_pct / count as f32,
+            wheels,
+            bipod,
+            tracks,
+            antigrav,
+            cmd_counts: cmds_order
+                .iter()
+                .zip(cmd_counts.iter())
+                .map(|(&n, &c)| (n, c))
+                .collect::<Vec<_>>()
+                .try_into()
+                .unwrap(),
+        });
+    }
+
+    let mut new_cmd: Option<RobotCommand> = None;
+
+    egui::Window::new("Юниты")
+        .id(egui::Id::new("robot_panel"))
+        .default_pos([10.0, 310.0])
         .resizable(false)
+        .collapsible(false)
         .show(ctx, |ui| {
-            if let Some((chassis_s, team_s, hp_s, weapons_s, cmd_s, robot_pos)) = &display_info {
-                ui.label(chassis_s);
-                ui.label(team_s);
-                ui.label(hp_s);
-                ui.label(weapons_s);
-                ui.separator();
-                ui.label(cmd_s);
-                ui.separator();
+            if let Some(ref s) = single {
+                // === Один робот ===
+                ui.horizontal(|ui| {
+                    ui.label(
+                        egui::RichText::new(format!("{:?}", s.chassis))
+                            .strong()
+                            .color(team_color_egui(s.team)),
+                    );
+                    ui.label(
+                        egui::RichText::new(format!("{:?}", s.team))
+                            .color(team_color_egui(s.team))
+                            .small(),
+                    );
+                });
 
-                if ui.button("SeekAndDestroy").clicked() {
-                    new_cmd = Some(RobotCommand::SeekAndDestroy(None));
-                }
-                if ui.button("SeekAndCapture").clicked() {
-                    new_cmd = Some(RobotCommand::SeekAndCapture(None));
-                }
-                if ui.button("Defend (здесь)").clicked() {
-                    new_cmd = Some(RobotCommand::Defend(*robot_pos));
-                }
-                if ui.button("Idle").clicked() {
-                    new_cmd = Some(RobotCommand::Idle);
-                }
-                ui.label("ПКМ = MoveTo | P+ПКМ = Patrol");
+                // HP-бар
+                let hp_pct = (s.hp / s.hp_max.max(1.0)).clamp(0.0, 1.0);
+                let hp_color = if hp_pct > 0.6 {
+                    egui::Color32::from_rgb(60, 180, 60)
+                } else if hp_pct > 0.3 {
+                    egui::Color32::from_rgb(220, 180, 40)
+                } else {
+                    egui::Color32::from_rgb(220, 60, 60)
+                };
+                let bar_w = ui.available_width().min(160.0);
+                let (rect, _) = ui.allocate_exact_size(
+                    egui::vec2(bar_w, 10.0),
+                    egui::Sense::hover(),
+                );
+                ui.painter().rect_filled(rect, 2.0, egui::Color32::from_rgb(40, 40, 40));
+                ui.painter().rect_filled(
+                    egui::Rect::from_min_size(rect.min, egui::vec2(rect.width() * hp_pct, rect.height())),
+                    2.0,
+                    hp_color,
+                );
+                ui.label(
+                    egui::RichText::new(format!("HP {:.0}/{:.0}  ⚙{}", s.hp, s.hp_max, s.weapons))
+                        .small()
+                        .color(egui::Color32::GRAY),
+                );
 
-                if show_patrol {
-                    ui.separator();
-                    ui.colored_label(
-                        egui::Color32::YELLOW,
-                        format!("Patrol: {} точек (P+ПКМ для добавления)", cmd_ui.patrol_points.len()),
+                ui.separator();
+                ui.label(
+                    egui::RichText::new(format!("▸ {}", s.cmd))
+                        .color(egui::Color32::from_rgb(180, 220, 255)),
+                );
+            } else if let Some(ref m) = multi {
+                // === Несколько роботов ===
+                ui.label(
+                    egui::RichText::new(format!("Выбрано: {} роботов", m.count))
+                        .strong()
+                        .color(egui::Color32::from_rgb(200, 200, 200)),
+                );
+
+                // Состав по шасси
+                ui.horizontal_wrapped(|ui| {
+                    if m.wheels   > 0 { ui.label(egui::RichText::new(format!("Кол.{}", m.wheels)).small()); }
+                    if m.bipod    > 0 { ui.label(egui::RichText::new(format!("Бип.{}", m.bipod)).small()); }
+                    if m.tracks   > 0 { ui.label(egui::RichText::new(format!("Гус.{}", m.tracks)).small()); }
+                    if m.antigrav > 0 { ui.label(egui::RichText::new(format!("АГр.{}", m.antigrav)).small()); }
+                });
+
+                // Средний HP
+                let bar_w = ui.available_width().min(160.0);
+                let (rect, _) = ui.allocate_exact_size(egui::vec2(bar_w, 8.0), egui::Sense::hover());
+                ui.painter().rect_filled(rect, 2.0, egui::Color32::from_rgb(40, 40, 40));
+                let hp_color = if m.avg_hp_pct > 0.6 {
+                    egui::Color32::from_rgb(60, 180, 60)
+                } else if m.avg_hp_pct > 0.3 {
+                    egui::Color32::from_rgb(220, 180, 40)
+                } else {
+                    egui::Color32::from_rgb(220, 60, 60)
+                };
+                ui.painter().rect_filled(
+                    egui::Rect::from_min_size(rect.min, egui::vec2(rect.width() * m.avg_hp_pct, rect.height())),
+                    2.0,
+                    hp_color,
+                );
+                ui.label(
+                    egui::RichText::new(format!("Средний HP: {:.0}%", m.avg_hp_pct * 100.0))
+                        .small()
+                        .color(egui::Color32::GRAY),
+                );
+
+                // Разброс приказов
+                let active: Vec<&str> = m.cmd_counts.iter()
+                    .filter(|(_, c)| *c > 0)
+                    .map(|(n, _)| *n)
+                    .collect();
+                if !active.is_empty() {
+                    ui.label(
+                        egui::RichText::new(format!("▸ {}", active.join(", ")))
+                            .small()
+                            .color(egui::Color32::from_rgb(180, 220, 255)),
                     );
                 }
-            } else {
-                ui.label(format!("Выбрано роботов: {}", selection.selected.len()));
+            }
+
+            ui.separator();
+
+            // === Кнопки команд (работают для всех выбранных) ===
+            ui.label(
+                egui::RichText::new("КОМАНДЫ").small().color(egui::Color32::DARK_GRAY),
+            );
+
+            ui.columns(2, |cols| {
+                if cols[0].button("⚔ Атаковать").clicked() {
+                    new_cmd = Some(RobotCommand::SeekAndDestroy(None));
+                }
+                if cols[0].button("⚑ Захватить").clicked() {
+                    new_cmd = Some(RobotCommand::SeekAndCapture(None));
+                }
+                if cols[1].button("⬡ Держать").clicked() {
+                    new_cmd = Some(RobotCommand::Defend(Vec3::ZERO)); // pos заменяется ниже
+                }
+                if cols[1].button("◻ Стоп").clicked() {
+                    new_cmd = Some(RobotCommand::Idle);
+                }
+            });
+
+            ui.label(
+                egui::RichText::new("ПКМ = Двигаться  |  P+ПКМ = Патруль")
+                    .small()
+                    .color(egui::Color32::DARK_GRAY),
+            );
+
+            if cmd_ui.show_patrol_hint {
+                ui.colored_label(
+                    egui::Color32::YELLOW,
+                    format!("Patrol: {} точек", cmd_ui.patrol_points.len()),
+                );
             }
         });
 
     // Применяем команду ко всем выбранным роботам
     if let Some(cmd) = new_cmd {
         for (mut robot_cmd, tf, ..) in &mut robots {
-            // Для Defend берём позицию каждого робота индивидуально
-            let actual_cmd = if matches!(cmd, RobotCommand::Defend(_)) {
+            *robot_cmd = if matches!(cmd, RobotCommand::Defend(_)) {
                 RobotCommand::Defend(tf.translation)
             } else {
                 cmd.clone()
             };
-            *robot_cmd = actual_cmd;
         }
     }
 
@@ -153,16 +323,24 @@ pub fn robot_info_panel(
 
 fn cmd_label(cmd: &RobotCommand) -> &'static str {
     match cmd {
-        RobotCommand::Idle => "Idle",
-        RobotCommand::MoveTo(_) => "MoveTo",
+        RobotCommand::Idle              => "Idle",
+        RobotCommand::MoveTo(_)         => "MoveTo",
         RobotCommand::SeekAndDestroy(_) => "SeekAndDestroy",
         RobotCommand::SeekAndCapture(_) => "SeekAndCapture",
-        RobotCommand::Defend(_) => "Defend",
-        RobotCommand::Patrol(_) => "Patrol",
+        RobotCommand::Defend(_)         => "Defend",
+        RobotCommand::Patrol(_)         => "Patrol",
     }
 }
 
-/// Рисует линии к целям выбранных роботов + индикаторы Patrol.
+fn team_color_egui(team: Team) -> egui::Color32 {
+    match team {
+        Team::Player  => egui::Color32::from_rgb(60, 200, 100),
+        Team::Enemy   => egui::Color32::from_rgb(220, 80, 80),
+        Team::Neutral => egui::Color32::GRAY,
+    }
+}
+
+/// Рисует gizmo-линии к целям выбранных роботов + индикаторы Patrol.
 pub fn draw_command_indicators(
     mut gizmos: Gizmos,
     robots: Query<(&Transform, &RobotCommand), With<Selected>>,
@@ -192,7 +370,6 @@ pub fn draw_command_indicators(
         }
     }
 
-    // Промежуточные точки Patrol в процессе набора
     for (i, p) in cmd_ui.patrol_points.iter().enumerate() {
         gizmos.sphere(*p, 0.4, Color::srgb(1.0, 0.5, 0.0));
         if i > 0 {
