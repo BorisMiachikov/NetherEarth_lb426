@@ -8,6 +8,26 @@ use super::{
     velocity::MovementTarget,
 };
 
+/// Детектор застревания: отслеживает, что робот двигается.
+/// Если за `threshold` секунд позиция не изменилась значимо — сбрасывает путь.
+#[derive(Component)]
+pub struct StuckDetector {
+    pub last_pos: Vec3,
+    pub timer: f32,
+    /// Порог (секунды) без движения → пересчёт пути.
+    pub threshold: f32,
+}
+
+impl Default for StuckDetector {
+    fn default() -> Self {
+        Self {
+            last_pos: Vec3::ZERO,
+            timer: 0.0,
+            threshold: 3.0,
+        }
+    }
+}
+
 /// Текущий путь робота.
 #[derive(Component, Default)]
 pub struct CurrentPath {
@@ -95,21 +115,69 @@ pub fn follow_path(
     }
 }
 
-/// Простое расталкивание роботов при наложении.
+/// Расталкивание роботов при наложении (O(n²), допустимо до ~100 роботов).
 pub fn separate_robots(
-    mut query: Query<&mut Transform, With<RobotMarker>>,
+    mut query: Query<(Entity, &mut Transform), With<RobotMarker>>,
 ) {
     const MIN_DIST: f32 = 1.0;
-    const PUSH: f32 = 0.05;
+    const PUSH: f32 = 0.04;
 
+    // Сначала собираем позиции (immutable), бorrow заканчивается после collect()
     let positions: Vec<(Entity, Vec3)> = query
         .iter()
-        .map(|tf| (Entity::PLACEHOLDER, tf.translation))
+        .map(|(e, tf)| (e, tf.translation))
         .collect();
 
-    // Простой O(n²) для небольшого числа роботов
-    let entities: Vec<Entity> = query.iter().map(|_| Entity::PLACEHOLDER).collect();
-    drop(positions);
-    drop(entities);
-    // TODO: реализовать когда будет выбор роботов (Фаза 4)
+    for (entity, mut tf) in &mut query {
+        let mut push = Vec3::ZERO;
+        for &(other_e, other_pos) in &positions {
+            if entity == other_e {
+                continue;
+            }
+            let diff = Vec2::new(
+                tf.translation.x - other_pos.x,
+                tf.translation.z - other_pos.z,
+            );
+            let dist = diff.length();
+            if dist < MIN_DIST && dist > 0.001 {
+                let push_xz = diff.normalize() * PUSH * (1.0 - dist / MIN_DIST);
+                push += Vec3::new(push_xz.x, 0.0, push_xz.y);
+            }
+        }
+        tf.translation += push;
+    }
+}
+
+/// Если робот не двигается дольше порога — принудительно пересчитывает путь.
+pub fn detect_stuck_robots(
+    time: Res<Time>,
+    mut query: Query<
+        (&Transform, &mut CurrentPath, &mut StuckDetector),
+        (With<RobotMarker>, With<MovementTarget>),
+    >,
+) {
+    let dt = time.delta_secs();
+
+    for (tf, mut path, mut stuck) in &mut query {
+        // Если waypoints закончились — робот дошёл, сбрасываем таймер
+        if path.index >= path.waypoints.len() {
+            stuck.timer = 0.0;
+            stuck.last_pos = tf.translation;
+            continue;
+        }
+
+        let moved = tf.translation.distance(stuck.last_pos);
+        if moved > 0.1 {
+            // Нормально движется
+            stuck.timer = 0.0;
+            stuck.last_pos = tf.translation;
+        } else {
+            stuck.timer += dt;
+            if stuck.timer >= stuck.threshold {
+                // Застрял — сбрасываем last_target, compute_path пересчитает маршрут
+                path.last_target = None;
+                stuck.timer = 0.0;
+            }
+        }
+    }
 }

@@ -3,6 +3,7 @@ pub mod factory;
 pub mod warbase;
 
 use bevy::prelude::*;
+use bevy_egui::EguiPrimaryContextPass;
 
 use crate::{
     core::Team,
@@ -39,8 +40,9 @@ impl Plugin for StructurePlugin {
             .add_systems(
                 Update,
                 (draw_capture_progress, draw_production_progress),
-            );
-            // structure_tooltip зарегистрирован в DebugPlugin (EguiPrimaryContextPass)
+            )
+            // Тултип типа/владельца структуры — всегда активен
+            .add_systems(EguiPrimaryContextPass, structure_tooltip);
     }
 }
 
@@ -62,13 +64,13 @@ fn team_to_core(team: &TeamDef) -> Team {
 
 fn factory_type(def: &FactoryTypeDef) -> FactoryType {
     match def {
-        FactoryTypeDef::General => FactoryType::General,
         FactoryTypeDef::Chassis => FactoryType::Chassis,
         FactoryTypeDef::Cannon => FactoryType::Cannon,
         FactoryTypeDef::Missile => FactoryType::Missile,
         FactoryTypeDef::Phasers => FactoryType::Phasers,
         FactoryTypeDef::Electronics => FactoryType::Electronics,
         FactoryTypeDef::Nuclear => FactoryType::Nuclear,
+        FactoryTypeDef::General => FactoryType::Chassis, // устаревший тип → Chassis
     }
 }
 
@@ -139,7 +141,7 @@ pub fn spawn_structures(
     }
 }
 
-/// Tooltip: при приближении скаута к структуре показывает egui-окошко.
+/// Tooltip: при приближении скаута к структуре показывает тип, владельца и производство.
 pub fn structure_tooltip(
     scout: Query<&Transform, With<crate::player::components::PlayerScout>>,
     factories: Query<(&Transform, &FactoryType, &Team), With<Factory>>,
@@ -151,32 +153,74 @@ pub fn structure_tooltip(
         return Ok(());
     };
 
-    const TOOLTIP_DIST: f32 = 3.0;
-    let mut info: Option<String> = None;
+    const TOOLTIP_DIST: f32 = 3.5;
+
+    struct StructInfo {
+        title: String,
+        owner: Team,
+        production: Option<(String, String)>, // (специфический ресурс, количество)
+    }
+
+    let mut found: Option<StructInfo> = None;
 
     for (tf, ft, team) in &factories {
         if scout_tf.translation.xz().distance(tf.translation.xz()) < TOOLTIP_DIST {
-            info = Some(format!("Фабрика: {ft}\nВладелец: {team:?}"));
+            let prod = match ft {
+                FactoryType::Chassis     => ("Шасси".to_string(),       "+5 Шасси, +2 Общий/день".to_string()),
+                FactoryType::Cannon      => ("Пушки".to_string(),       "+5 Пушки, +2 Общий/день".to_string()),
+                FactoryType::Missile     => ("Ракеты".to_string(),      "+5 Ракеты, +2 Общий/день".to_string()),
+                FactoryType::Phasers     => ("Фазеры".to_string(),      "+5 Фазеры, +2 Общий/день".to_string()),
+                FactoryType::Electronics => ("Электроника".to_string(), "+5 Электроника, +2 Общий/день".to_string()),
+                FactoryType::Nuclear     => ("Ядерный".to_string(),     "+5 Ядерный, +2 Общий/день".to_string()),
+            };
+            found = Some(StructInfo {
+                title: format!("Фабрика: {ft}"),
+                owner: *team,
+                production: Some(prod),
+            });
             break;
         }
     }
-    if info.is_none() {
+    if found.is_none() {
         for (tf, team) in &warbases {
             if scout_tf.translation.xz().distance(tf.translation.xz()) < TOOLTIP_DIST {
-                info = Some(format!("Warbase\nВладелец: {team:?}"));
+                found = Some(StructInfo {
+                    title: "Главная база".to_string(),
+                    owner: *team,
+                    production: Some(("Общий".to_string(), "+5 Общий/день".to_string())),
+                });
                 break;
             }
         }
     }
 
-    if let Some(text) = info {
-        bevy_egui::egui::Window::new("Структура")
+    if let Some(info) = found {
+        let owner_color = match info.owner {
+            Team::Player  => bevy_egui::egui::Color32::from_rgb(60, 200, 100),
+            Team::Enemy   => bevy_egui::egui::Color32::from_rgb(220, 80, 80),
+            Team::Neutral => bevy_egui::egui::Color32::GRAY,
+        };
+        let owner_label = match info.owner {
+            Team::Player  => "Игрок",
+            Team::Enemy   => "Враг",
+            Team::Neutral => "Нейтрал",
+        };
+
+        bevy_egui::egui::Window::new(&info.title)
             .id(bevy_egui::egui::Id::new("structure_tooltip"))
-            .default_pos([200.0, 10.0])
+            .anchor(bevy_egui::egui::Align2::RIGHT_TOP, bevy_egui::egui::vec2(-10.0, 10.0))
             .resizable(false)
             .collapsible(false)
             .show(ctx, |ui| {
-                ui.label(text);
+                ui.colored_label(owner_color, owner_label);
+                if let Some((_, prod_text)) = info.production {
+                    ui.separator();
+                    ui.label(
+                        bevy_egui::egui::RichText::new(prod_text)
+                            .small()
+                            .color(bevy_egui::egui::Color32::from_rgb(160, 220, 160)),
+                    );
+                }
             });
     }
 

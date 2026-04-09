@@ -4,9 +4,9 @@ pub mod velocity;
 
 use bevy::prelude::*;
 
-use steering::{compute_path, follow_path};
+use steering::{compute_path, detect_stuck_robots, follow_path, separate_robots};
 
-pub use steering::CurrentPath;
+pub use steering::{CurrentPath, StuckDetector};
 pub use velocity::{MovementTarget, Velocity};
 
 /// Выбирает точку исследования в квадранте, противоположном текущей позиции.
@@ -38,6 +38,14 @@ pub struct MovementPlugin;
 
 impl Plugin for MovementPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(FixedUpdate, (compute_path, follow_path.after(compute_path)));
+        app.add_systems(
+            FixedUpdate,
+            (
+                detect_stuck_robots,
+                compute_path.after(detect_stuck_robots),
+                follow_path.after(compute_path),
+                separate_robots.after(follow_path),
+            ),
+        );
     }
 }

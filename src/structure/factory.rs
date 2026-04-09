@@ -4,7 +4,6 @@ use serde::Deserialize;
 /// Тип фабрики определяет, какой ресурс она производит.
 #[derive(Component, Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, Deserialize)]
 pub enum FactoryType {
-    General,
     Chassis,
     Cannon,
     Missile,
@@ -16,7 +15,6 @@ pub enum FactoryType {
 impl std::fmt::Display for FactoryType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let name = match self {
-            FactoryType::General => "Общий",
             FactoryType::Chassis => "Шасси",
             FactoryType::Cannon => "Пушка",
             FactoryType::Missile => "Ракета",

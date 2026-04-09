@@ -153,7 +153,10 @@ pub fn update_capture_progress(
     }
 }
 
-/// Observer: смена владельца и сброс прогресса при захвате.
+/// Observer: смена владельца при захвате.
+/// Если старый владелец — не нейтральный (вражеский/свой), завод сначала становится
+/// нейтральным (удвоенное время захвата). Если старый владелец нейтральный — переходит
+/// к захватчику сразу.
 pub fn on_structure_captured(
     trigger: On<StructureCaptured>,
     mut structures: Query<(
@@ -167,14 +170,27 @@ pub fn on_structure_captured(
     let Ok((mut team, mut progress, mat_handle)) = structures.get_mut(ev.structure) else {
         return;
     };
-    *team = ev.new_owner;
+
+    let new_team = if ev.old_owner == Team::Neutral {
+        // Нейтральный завод → сразу к захватчику
+        ev.new_owner
+    } else {
+        // Вражеский (или свой перехваченный) → сначала нейтральный
+        Team::Neutral
+    };
+
+    *team = new_team;
     progress.progress = 0.0;
+
     if let Some(mat) = materials.get_mut(mat_handle.id()) {
-        mat.base_color = team_color_core(ev.new_owner);
+        mat.base_color = team_color_core(new_team);
     }
+
     info!(
-        "Структура захвачена: {:?} → {:?}",
-        ev.old_owner, ev.new_owner
+        "Структура: {:?} → {:?}{}",
+        ev.old_owner,
+        new_team,
+        if new_team == Team::Neutral { " (нейтральная, требует повторного захвата)" } else { "" }
     );
 }
 

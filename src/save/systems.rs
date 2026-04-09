@@ -1,13 +1,20 @@
 use bevy::prelude::*;
 
 use crate::{
-    ai::state::AICommander,
+    ai::state::{AICommander, GameResult},
     command::command::RobotCommand,
     core::{Health, Team},
     core::time::GameTime,
     economy::resource::{PlayerResources, ResourceType},
-    map::grid::MapGrid,
-    player::components::PlayerScout,
+    map::{
+        grid::MapGrid,
+        loader::{MapSpawnPoints, MapStructures, TeamDef},
+    },
+    player::{
+        commands_ui::CommandUiState,
+        components::PlayerScout,
+        selection::SelectionState,
+    },
     robot::{
         builder::RobotBlueprint,
         bundle::spawn_robot,
@@ -408,4 +415,114 @@ pub fn apply_pending_load(
     }
 
     info!("Загрузка завершена: день {}, {} роботов", data.game_day, data.robots.len());
+}
+
+// ── Новая игра ────────────────────────────────────────────────────────────────
+
+/// Сброс игрового мира до начального состояния (Новая игра).
+#[derive(Event, Debug)]
+pub struct TriggerNewGame;
+
+#[allow(clippy::too_many_arguments)]
+pub fn on_trigger_new_game(
+    _trigger: On<TriggerNewGame>,
+    mut commands: Commands,
+    robots_q: Query<Entity, With<RobotMarker>>,
+    mut scout_q: Query<(&mut Transform, &mut crate::player::components::ScoutMovement), With<PlayerScout>>,
+    mut structures_q: Query<
+        (Entity, &mut Team, &MeshMaterial3d<StandardMaterial>, Option<&mut CaptureProgress>),
+        Or<(With<Factory>, With<Warbase>)>,
+    >,
+    mut resources: ResMut<PlayerResources>,
+    mut game_time: ResMut<GameTime>,
+    mut ai: ResMut<AICommander>,
+    mut game_result: ResMut<GameResult>,
+    mut selection: ResMut<SelectionState>,
+    mut cmd_ui: ResMut<CommandUiState>,
+    mut last_autosave: ResMut<LastAutoSaveDay>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    map: Res<MapGrid>,
+    map_structures: Res<MapStructures>,
+    spawn_points: Res<MapSpawnPoints>,
+) {
+    // 1. Удалить всех роботов
+    for entity in &robots_q {
+        commands.entity(entity).despawn();
+    }
+
+    // 2. Сбросить структуры до начальных команд из карты
+    for factory_def in &map_structures.factories {
+        let world_pos = map.grid_to_world(factory_def.x, factory_def.y);
+        if let Some((gx, gy)) = map.world_to_grid(world_pos) {
+            if let Some(crate::map::grid::CellType::Structure(entity)) = map.get(gx, gy) {
+                if let Ok((_, mut team, mat_handle, cp_opt)) = structures_q.get_mut(entity) {
+                    let new_team = teamdef_to_team(&factory_def.team);
+                    *team = new_team;
+                    if let Some(mat) = materials.get_mut(mat_handle.id()) {
+                        mat.base_color = team_color_core(new_team);
+                    }
+                    if let Some(mut cp) = cp_opt {
+                        cp.progress = 0.0;
+                    }
+                }
+            }
+        }
+    }
+
+    for warbase_def in &map_structures.warbases {
+        let world_pos = map.grid_to_world(warbase_def.x, warbase_def.y);
+        if let Some((gx, gy)) = map.world_to_grid(world_pos) {
+            if let Some(crate::map::grid::CellType::Structure(entity)) = map.get(gx, gy) {
+                if let Ok((_, mut team, mat_handle, _)) = structures_q.get_mut(entity) {
+                    let new_team = teamdef_to_team(&warbase_def.team);
+                    *team = new_team;
+                    let color = team_color_core(new_team);
+                    if let Some(mat) = materials.get_mut(mat_handle.id()) {
+                        mat.base_color = color;
+                        mat.emissive = LinearRgba::from(color) * 0.3;
+                    }
+                }
+            }
+        }
+    }
+
+    // 3. Ресурсы игрока
+    *resources = PlayerResources::with_starting_values();
+
+    // 4. Игровое время
+    *game_time = GameTime::default();
+
+    // 5. ИИ (сбросить счётчики, сохранить конфиг)
+    ai.decision_timer   = 0.0;
+    ai.build_timer      = 0.0;
+    ai.decision_counter = 0;
+    ai.robots_built     = 0;
+
+    // 6. Результат игры
+    *game_result = GameResult::default();
+
+    // 7. UI-состояние
+    selection.selected.clear();
+    cmd_ui.patrol_points.clear();
+    cmd_ui.show_patrol_hint = false;
+
+    // 8. Автосохранение
+    last_autosave.0 = 0;
+
+    // 9. Позиция скаута
+    let (sx, sy) = spawn_points.player_spawn;
+    let spawn_world = map.grid_to_world(sx, sy);
+    if let Ok((mut tf, movement)) = scout_q.single_mut() {
+        tf.translation = spawn_world.with_y(movement.altitude);
+    }
+
+    info!("Новая игра начата");
+}
+
+fn teamdef_to_team(def: &TeamDef) -> Team {
+    match def {
+        TeamDef::Player  => Team::Player,
+        TeamDef::Enemy   => Team::Enemy,
+        TeamDef::Neutral => Team::Neutral,
+    }
 }

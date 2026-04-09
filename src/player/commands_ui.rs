@@ -87,7 +87,7 @@ struct MultiInfo {
 /// Панель информации о выбранных роботах + кнопки команд.
 pub fn robot_info_panel(
     mut contexts: EguiContexts,
-    selection: Res<SelectionState>,
+    mut selection: ResMut<SelectionState>,
     mut robots: Query<
         (
             &mut RobotCommand,
@@ -100,7 +100,9 @@ pub fn robot_info_panel(
         ),
         With<Selected>,
     >,
+    selected_entities: Query<Entity, With<Selected>>,
     cmd_ui: Res<CommandUiState>,
+    mut commands: Commands,
 ) -> Result {
     if selection.selected.is_empty() {
         return Ok(());
@@ -173,6 +175,7 @@ pub fn robot_info_panel(
     }
 
     let mut new_cmd: Option<RobotCommand> = None;
+    let mut deselect = false;
 
     // Есть ли ядерный заряд среди выбранных
     let any_nuclear = single.as_ref().map_or(false, |s| s.has_nuclear)
@@ -182,7 +185,7 @@ pub fn robot_info_panel(
         .id(egui::Id::new("robot_panel"))
         .default_pos([10.0, 310.0])
         .resizable(false)
-        .collapsible(false)
+        .collapsible(true)
         .show(ctx, |ui| {
             if let Some(ref s) = single {
                 // === Один робот ===
@@ -321,7 +324,31 @@ pub fn robot_info_panel(
                     format!("Patrol: {} точек", cmd_ui.patrol_points.len()),
                 );
             }
+
+            ui.separator();
+            if ui
+                .add_sized(
+                    [ui.available_width(), 22.0],
+                    egui::Button::new(
+                        egui::RichText::new("✕ Снять выбор")
+                            .small()
+                            .color(egui::Color32::GRAY),
+                    ),
+                )
+                .clicked()
+            {
+                deselect = true;
+            }
         });
+
+    // Снять выбор (кнопка в панели)
+    if deselect {
+        for e in &selected_entities {
+            commands.entity(e).remove::<Selected>();
+        }
+        selection.selected.clear();
+        return Ok(());
+    }
 
     // Применяем команду ко всем выбранным роботам
     if let Some(cmd) = new_cmd {

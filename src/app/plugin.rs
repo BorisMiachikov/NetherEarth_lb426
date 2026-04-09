@@ -9,7 +9,6 @@ use crate::{
     combat::CombatPlugin,
     command::CommandPlugin,
     core::CorePlugin,
-    debug::DebugPlugin,
     economy::EconomyPlugin,
     localization::LocalizationPlugin,
     map::MapPlugin,
@@ -56,7 +55,9 @@ impl Plugin for AppPlugin {
             UiPlugin,
             AudioPlugin,
             SavePlugin,
-            DebugPlugin,
         ));
+
+        #[cfg(feature = "debug_tools")]
+        app.add_plugins(crate::debug::DebugPlugin);
     }
 }

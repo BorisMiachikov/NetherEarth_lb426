@@ -37,39 +37,42 @@ impl Default for BuilderUiState {
     }
 }
 
-/// Открывает Builder UI по нажатию B рядом со своим варбейсом.
+const BUILDER_RANGE: f32 = 6.0;
+
+/// Открывает/закрывает Builder UI по нажатию B рядом со своим варбейсом.
+/// Также закрывает меню, если игрок отошёл от базы.
 pub fn open_builder_input(
     keys: Res<ButtonInput<KeyCode>>,
     scout: Query<&Transform, With<PlayerScout>>,
     warbases: Query<(Entity, &Transform, &Team), With<Warbase>>,
     mut state: ResMut<BuilderUiState>,
 ) {
-    if !keys.just_pressed(KeyCode::KeyB) {
-        return;
-    }
     let Ok(scout_tf) = scout.single() else {
         return;
     };
 
-    const BUILDER_RANGE: f32 = 6.0;
-
+    // Ближайший варбейс игрока
     let nearby = warbases
         .iter()
         .filter(|(_, _, t)| **t == Team::Player)
-        .find(|(_, tf, _)| {
-            tf.translation
-                .xz()
-                .distance(scout_tf.translation.xz())
-                < BUILDER_RANGE
-        });
+        .find(|(_, tf, _)| tf.translation.xz().distance(scout_tf.translation.xz()) < BUILDER_RANGE);
 
-    if nearby.is_some() {
-        state.open = !state.open;
-        if state.open {
-            state.warbase_entity = nearby.map(|(e, _, _)| e);
+    // Если меню открыто — проверяем, не вышел ли игрок из зоны
+    if state.open {
+        let still_near = nearby.map_or(false, |(e, _, _)| Some(e) == state.warbase_entity);
+        if !still_near {
+            state.open = false;
+            state.warbase_entity = None;
+            return;
         }
-    } else if state.open {
-        state.open = false;
+    }
+
+    // Открыть/закрыть по нажатию B
+    if keys.just_pressed(KeyCode::KeyB) {
+        if let Some((entity, _, _)) = nearby {
+            state.open = !state.open;
+            state.warbase_entity = if state.open { Some(entity) } else { None };
+        }
     }
 }
 

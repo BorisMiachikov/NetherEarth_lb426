@@ -9,8 +9,6 @@ use gizmos::{draw_debug_gizmos, toggle_gizmos, DebugGizmosState};
 use overlay::debug_overlay;
 use robot_spawn::{robot_spawn_panel, RobotSpawnUi};
 
-use crate::structure::structure_tooltip;
-
 pub struct DebugPlugin;
 
 impl Plugin for DebugPlugin {
@@ -20,7 +18,7 @@ impl Plugin for DebugPlugin {
             .init_resource::<RobotSpawnUi>()
             .add_systems(
                 EguiPrimaryContextPass,
-                (debug_overlay, structure_tooltip, robot_spawn_panel),
+                (debug_overlay, robot_spawn_panel),
             )
             .add_systems(Update, (toggle_gizmos, draw_debug_gizmos));
     }

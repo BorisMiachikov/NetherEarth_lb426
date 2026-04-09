@@ -3,8 +3,11 @@ use bevy_egui::{egui, EguiContexts};
 
 use crate::{
     core::{time::GameTime, Team},
-    economy::resource::{PlayerResources, ResourceType},
-    structure::{capture::Capturable, factory::Factory, FactType},
+    economy::{
+        production::{FACTORY_GENERAL_BONUS, FACTORY_SPECIFIC_PER_DAY, WARBASE_GENERAL_PER_DAY},
+        resource::{PlayerResources, ResourceType},
+    },
+    structure::{capture::Capturable, factory::Factory, warbase::Warbase, FactType},
 };
 
 /// (тип ресурса, метка, emoji)
@@ -29,9 +32,10 @@ fn resource_color(amount: i32) -> egui::Color32 {
     }
 }
 
-/// Считает суммарное производство в день для каждой команды.
+/// Считает суммарное производство в день для игрока.
 fn production_per_day(
     factories: &Query<(&FactType, &Team), (With<Factory>, With<Capturable>)>,
+    warbases: &Query<&Team, With<Warbase>>,
 ) -> [i32; 7] {
     // [General, Chassis, Cannon, Missile, Phasers, Electronics, Nuclear] — по порядку RESOURCE_META
     let order = [
@@ -44,12 +48,20 @@ fn production_per_day(
         ResourceType::Nuclear,
     ];
     let mut prod = [0i32; 7];
+
+    // Варбейс: +WARBASE_GENERAL_PER_DAY General
+    for team in warbases {
+        if *team == Team::Player {
+            prod[0] += WARBASE_GENERAL_PER_DAY;
+        }
+    }
+
+    // Фабрики: +FACTORY_SPECIFIC_PER_DAY специфического + FACTORY_GENERAL_BONUS General
     for (ft, team) in factories {
         if *team != Team::Player {
             continue;
         }
         let rt = match ft {
-            FactType::General     => ResourceType::General,
             FactType::Chassis     => ResourceType::Chassis,
             FactType::Cannon      => ResourceType::Cannon,
             FactType::Missile     => ResourceType::Missile,
@@ -57,11 +69,10 @@ fn production_per_day(
             FactType::Electronics => ResourceType::Electronics,
             FactType::Nuclear     => ResourceType::Nuclear,
         };
-        // +5 специфического + 2 General за каждую фабрику
         if let Some(idx) = order.iter().position(|r| *r == rt) {
-            prod[idx] += 5;
+            prod[idx] += FACTORY_SPECIFIC_PER_DAY;
         }
-        prod[0] += 2; // General
+        prod[0] += FACTORY_GENERAL_BONUS;
     }
     prod
 }
@@ -72,11 +83,12 @@ pub fn draw_resource_hud(
     game_time: Res<GameTime>,
     factories: Query<(&FactType, &Team), (With<Factory>, With<Capturable>)>,
     enemy_factories: Query<&Team, With<Factory>>,
+    warbases: Query<&Team, With<Warbase>>,
     mut contexts: EguiContexts,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
-    let prod = production_per_day(&factories);
+    let prod = production_per_day(&factories, &warbases);
 
     // Подсчёт фабрик по командам
     let (player_count, enemy_count, neutral_count) = enemy_factories.iter().fold(

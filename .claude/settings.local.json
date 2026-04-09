@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "WebSearch",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:docs.rs)",
+      "Bash(cargo build:*)",
+      "Bash(gh auth:*)",
+      "Bash(git --version)",
+      "Bash(where git:*)",
+      "Bash(xargs grep:*)",
+      "Bash(sed -n '1140,1165p' \"C:/Users/lb426/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.18.1/src/system/commands/mod.rs\")",
+      "Bash(sed -n '2320,2345p' \"C:/Users/lb426/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/bevy_ecs-0.18.1/src/system/commands/mod.rs\")",
+      "Bash(cargo test:*)",
+      "Bash(grep -E \"test |FAILED|ok$|error\\\\[\")",
+      "Bash(grep -E \"running [0-9]|ok$|FAILED|test result\")",
+      "Bash(cargo run:*)",
+      "Bash(cargo check:*)",
+      "Bash(set RUST_BACKTRACE=1)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(cargo tree:*)",
+      "Bash(nether_earth\")",
+      "Bash(grep -v \"^warning: unused\\\\|^warning: variable\\\\|^warning: `nether_earth\")",
+      "Bash(wait:*)"
+    ]
+  }
+}

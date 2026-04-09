@@ -111,7 +111,11 @@ pub fn spawn_robot(
         MeshMaterial3d(mat),
         Transform::from_translation(pos),
     ));
-    entity.insert((WeaponCooldowns::default(), vision_range));
+    entity.insert((
+        WeaponCooldowns::default(),
+        vision_range,
+        crate::movement::steering::StuckDetector::default(),
+    ));
 
     if let Some(elec) = electronics_opt {
         entity.insert(Electronics {

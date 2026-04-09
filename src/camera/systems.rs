@@ -52,7 +52,9 @@ pub fn spawn_camera(mut commands: Commands) {
 }
 
 /// Камера следует за сущностью с `CameraTarget` (PostUpdate).
+/// Использует lerp для устранения дрожания при рассинхроне FixedUpdate/PostUpdate.
 pub fn follow_target(
+    time: Res<Time>,
     target: Query<&Transform, (With<CameraTarget>, Without<IsometricCamera>)>,
     mut camera: Query<(&mut Transform, &IsometricCamera)>,
 ) {
@@ -64,8 +66,11 @@ pub fn follow_target(
     };
 
     let rotation = iso_rotation();
-    cam_tf.translation =
-        target_tf.translation + rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE);
+    let desired = target_tf.translation + rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE);
+
+    // Высокий коэффициент (~20) — почти мгновенно, но без резких скачков
+    let alpha = (20.0 * time.delta_secs()).min(1.0);
+    cam_tf.translation = cam_tf.translation.lerp(desired, alpha);
     cam_tf.rotation = rotation;
 }
 

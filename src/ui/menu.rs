@@ -7,7 +7,7 @@ use crate::{
     localization::{ChangeLanguage, Language, Localization},
     save::{
         io::{autosave_info, slot_info},
-        systems::{TriggerLoad, TriggerLoadAutosave, TriggerSave},
+        systems::{TriggerLoad, TriggerLoadAutosave, TriggerNewGame, TriggerSave},
         SAVE_SLOT_COUNT,
     },
 };
@@ -236,6 +236,7 @@ pub fn draw_main_menu(
                     .add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.new_game")))
                     .clicked()
                 {
+                    commands.trigger(TriggerNewGame);
                     next_state.set(AppState::Playing);
                 }
                 ui.add_space(8.0);

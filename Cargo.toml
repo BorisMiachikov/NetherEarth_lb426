@@ -19,6 +19,10 @@ bevy_common_assets = { version = "0.15.0", features = ["ron"] }
 # Включить для более быстрой компиляции в разработке:
 # cargo run --features dev
 dev = ["bevy/dynamic_linking"]
+# Debug-инструменты (overlay, egui-спавн, gizmos, tooltip).
+# В релизной сборке НЕ включать.
+# cargo run --features debug_tools
+debug_tools = []
 
 [profile.dev]
 opt-level = 1

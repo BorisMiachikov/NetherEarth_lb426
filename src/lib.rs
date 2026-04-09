@@ -5,6 +5,7 @@ mod camera;
 mod combat;
 mod command;
 mod core;
+#[cfg(feature = "debug_tools")]
 mod debug;
 mod economy;
 pub mod localization;
