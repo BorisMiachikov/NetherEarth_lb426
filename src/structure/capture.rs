@@ -72,11 +72,19 @@ pub fn seek_capture_navigation(
 
         let robot_pos = robot_tf.translation;
 
-        // Ближайшая видимая чужая структура
+        // Ближайшая видимая чужая структура (дистанция + LOS)
+        let from_cell = map.world_to_grid(robot_pos);
         let visible_target = capturable
             .iter()
             .filter(|(_, _, t)| *t != robot_team)
             .filter(|(_, tf, _)| robot_pos.distance(tf.translation) <= vision.0)
+            .filter(|(_, tf, _)| {
+                let to_cell = map.world_to_grid(tf.translation);
+                match (from_cell, to_cell) {
+                    (Some(f), Some(t)) => map.has_line_of_sight(f, t),
+                    _ => false,
+                }
+            })
             .min_by_key(|(_, tf, _)| (robot_pos.distance(tf.translation) * 100.0) as u32)
             .map(|(e, tf, _)| (e, tf.translation));
 

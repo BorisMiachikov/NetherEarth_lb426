@@ -1,6 +1,6 @@
 use std::collections::{BinaryHeap, HashMap};
 
-use crate::map::grid::MapGrid;
+use crate::{map::grid::MapGrid, robot::components::ChassisType};
 
 /// Ячейка пути.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -36,33 +36,32 @@ fn heuristic(a: GridCell, b: GridCell) -> u32 {
     a.x.abs_diff(b.x) + a.y.abs_diff(b.y)
 }
 
-/// A* на MapGrid. `can_fly` — AntiGrav игнорирует заблокированные ячейки.
+/// A* на MapGrid с учётом типа шасси.
+///
+/// - Rock/Blocked: непроходимо для всех.
+/// - Pit: непроходимо для Wheels/Bipod/Tracks, проходимо для AntiGrav.
+/// - Sand: стоимость 2 для Wheels/Bipod, 1 для остальных.
+/// - Structure: непроходима, но смежные ячейки используются как fallback-цель.
+///
 /// Возвращает путь от start (не включительно) до goal (включительно),
 /// или None если цель недостижима.
 pub fn find_path(
     map: &MapGrid,
     start: GridCell,
     goal: GridCell,
-    can_fly: bool,
+    chassis: ChassisType,
 ) -> Option<Vec<GridCell>> {
     if start == goal {
         return Some(vec![]);
     }
 
-    let is_walkable = |c: GridCell| -> bool {
-        if can_fly {
-            // AntiGrav летит над Blocked, но не через Structure (здания)
-            matches!(
-                map.get(c.x, c.y),
-                Some(crate::map::grid::CellType::Open)
-                    | Some(crate::map::grid::CellType::Blocked)
-            )
-        } else {
-            map.is_passable(c.x, c.y)
-        }
+    let cell_cost = |c: GridCell| -> Option<u32> {
+        map.get(c.x, c.y)?.movement_cost(chassis)
     };
 
-    // Если цель непроходима (стоит структура), берём ближайшую соседнюю клетку.
+    let is_walkable = |c: GridCell| cell_cost(c).is_some();
+
+    // Если цель непроходима (стоит структура или скала), берём ближайшую соседнюю клетку.
     let goal = if !is_walkable(goal) {
         let adj = [
             GridCell::new(goal.x.wrapping_sub(1), goal.y),
@@ -114,10 +113,10 @@ pub fn find_path(
 
         for (nx, ny) in neighbors {
             let neighbor = GridCell::new(nx, ny);
-            if !is_walkable(neighbor) {
+            let Some(cost) = cell_cost(neighbor) else {
                 continue;
-            }
-            let tentative_g = cur_g + 1;
+            };
+            let tentative_g = cur_g.saturating_add(cost);
             if tentative_g < *g_score.get(&neighbor).unwrap_or(&u32::MAX) {
                 came_from.insert(neighbor, current);
                 g_score.insert(neighbor, tentative_g);
@@ -140,7 +139,7 @@ mod tests {
     #[test]
     fn straight_path() {
         let map = MapGrid::new(10, 10);
-        let path = find_path(&map, GridCell::new(0, 0), GridCell::new(3, 0), false).unwrap();
+        let path = find_path(&map, GridCell::new(0, 0), GridCell::new(3, 0), ChassisType::Wheels).unwrap();
         assert_eq!(path.len(), 3);
         assert_eq!(path.last().unwrap(), &GridCell::new(3, 0));
     }
@@ -148,35 +147,56 @@ mod tests {
     #[test]
     fn path_around_wall() {
         let mut map = MapGrid::new(10, 10);
-        // Стена по x=2, y=0..4
         for y in 0..4 {
-            map.set(2, y, CellType::Blocked);
+            map.set(2, y, CellType::Rock);
         }
-        let path = find_path(&map, GridCell::new(0, 0), GridCell::new(4, 0), false).unwrap();
+        let path = find_path(&map, GridCell::new(0, 0), GridCell::new(4, 0), ChassisType::Wheels).unwrap();
         assert!(!path.is_empty());
-        // Путь не проходит через заблокированные ячейки
         for cell in &path {
-            assert!(map.is_passable(cell.x, cell.y));
+            assert!(CellType::Rock != map.get(cell.x, cell.y).unwrap());
         }
+    }
+
+    #[test]
+    fn pit_blocks_wheels_not_antigrav() {
+        let mut map = MapGrid::new(10, 10);
+        // Ряд ям поперёк пути
+        for x in 0..10 {
+            map.set(x, 3, CellType::Pit);
+        }
+        // Wheels не может пересечь
+        assert!(find_path(&map, GridCell::new(5, 0), GridCell::new(5, 6), ChassisType::Wheels).is_none());
+        // AntiGrav может
+        assert!(find_path(&map, GridCell::new(5, 0), GridCell::new(5, 6), ChassisType::AntiGrav).is_some());
+    }
+
+    #[test]
+    fn sand_prefers_open_for_wheels() {
+        let mut map = MapGrid::new(10, 10);
+        // Полоса песка по x=1..8, y=5 — прямой путь дороже
+        for x in 0..10 {
+            map.set(x, 5, CellType::Sand);
+        }
+        // Путь должен найтись (Sand проходим)
+        let path = find_path(&map, GridCell::new(5, 0), GridCell::new(5, 9), ChassisType::Wheels);
+        assert!(path.is_some());
     }
 
     #[test]
     fn unreachable_goal_returns_none() {
         let mut map = MapGrid::new(5, 5);
-        // Окружаем цель со всех сторон
-        map.set(3, 2, CellType::Blocked);
-        map.set(2, 3, CellType::Blocked);
-        map.set(4, 3, CellType::Blocked);
-        map.set(3, 4, CellType::Blocked);
-        // Сама цель открыта, но окружена
-        let result = find_path(&map, GridCell::new(0, 0), GridCell::new(3, 3), false);
+        map.set(3, 2, CellType::Rock);
+        map.set(2, 3, CellType::Rock);
+        map.set(4, 3, CellType::Rock);
+        map.set(3, 4, CellType::Rock);
+        let result = find_path(&map, GridCell::new(0, 0), GridCell::new(3, 3), ChassisType::Wheels);
         assert!(result.is_none());
     }
 
     #[test]
     fn same_start_and_goal() {
         let map = MapGrid::new(10, 10);
-        let path = find_path(&map, GridCell::new(2, 2), GridCell::new(2, 2), false).unwrap();
+        let path = find_path(&map, GridCell::new(2, 2), GridCell::new(2, 2), ChassisType::Tracks).unwrap();
         assert!(path.is_empty());
     }
 }

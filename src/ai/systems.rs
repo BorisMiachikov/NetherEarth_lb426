@@ -234,11 +234,19 @@ pub fn update_seek_destroy(
         .collect();
 
     for (entity, robot_pos, team, vision_range, tracked_opt, current_mov) in snapshot {
-        // Ищем ближайшего видимого врага
+        // Ищем ближайшего видимого врага (дистанция + LOS)
+        let from_cell = map.world_to_grid(robot_pos);
         let visible_enemy = all_robots
             .iter()
             .filter(|(e, _, t)| *e != entity && **t != team)
             .filter(|(_, t, _)| robot_pos.distance(t.translation) <= vision_range)
+            .filter(|(_, t, _)| {
+                let to_cell = map.world_to_grid(t.translation);
+                match (from_cell, to_cell) {
+                    (Some(f), Some(t)) => map.has_line_of_sight(f, t),
+                    _ => false,
+                }
+            })
             .min_by_key(|(_, t, _)| (robot_pos.distance(t.translation) * 100.0) as u32)
             .map(|(e, t, _)| (e, t.translation));
 
@@ -291,17 +299,29 @@ pub fn seek_destroy_base(
 
         let robot_pos = tf.translation;
 
-        // Вражеский варбейс в радиусе видимости
+        // Вражеский варбейс в радиусе видимости + LOS
+        let from_cell = map.world_to_grid(robot_pos);
+        let los_ok = |pos: Vec3| -> bool {
+            let to_cell = map.world_to_grid(pos);
+            match (from_cell, to_cell) {
+                (Some(f), Some(t)) => map.has_line_of_sight(f, t),
+                _ => false,
+            }
+        };
         let visible_warbase = target_opt
             .and_then(|e| warbases.get(e).ok())
             .filter(|(_, _, t)| **t != *robot_team)
             .filter(|(_, t, _)| robot_pos.distance(t.translation) <= vision.0)
+            .filter(|(_, t, _)| los_ok(t.translation))
             .map(|(e, t, _)| (e, t.translation))
             .or_else(|| {
                 warbases
                     .iter()
                     .filter(|(_, _, t)| **t != *robot_team)
-                    .find(|(_, t, _)| robot_pos.distance(t.translation) <= vision.0)
+                    .find(|(_, t, _)| {
+                        robot_pos.distance(t.translation) <= vision.0
+                            && los_ok(t.translation)
+                    })
                     .map(|(e, t, _)| (e, t.translation))
             });
 

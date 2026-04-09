@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::map::grid::{MapGrid, CELL_SIZE};
+use crate::map::grid::{CellType, MapGrid, CELL_SIZE};
 use crate::robot::components::{Chassis, ChassisType, RobotMarker, RobotStats};
 
 use super::{
@@ -59,11 +59,10 @@ pub fn compute_path(
             continue;
         };
 
-        let can_fly = chassis.chassis_type.can_fly();
         let start_cell = GridCell::new(start.0, start.1);
         let goal_cell = GridCell::new(goal.0, goal.1);
 
-        if let Some(new_path) = find_path(&map, start_cell, goal_cell, can_fly) {
+        if let Some(new_path) = find_path(&map, start_cell, goal_cell, chassis.chassis_type) {
             path.waypoints = new_path;
             path.index = 0;
         } else {
@@ -73,18 +72,21 @@ pub fn compute_path(
     }
 }
 
+/// Коэффициент замедления на песке для Wheels и Bipod.
+const SAND_SPEED_MULT: f32 = 0.5;
+
 /// Движение по пути (FixedUpdate).
 pub fn follow_path(
     time: Res<Time>,
     map: Res<MapGrid>,
     mut query: Query<
-        (&mut Transform, &RobotStats, &mut CurrentPath),
+        (&mut Transform, &RobotStats, &Chassis, &mut CurrentPath),
         With<RobotMarker>,
     >,
 ) {
     let dt = time.delta_secs();
 
-    for (mut tf, stats, mut path) in &mut query {
+    for (mut tf, stats, chassis, mut path) in &mut query {
         if path.index >= path.waypoints.len() {
             continue;
         }
@@ -95,7 +97,19 @@ pub fn follow_path(
 
         let dir = target_xz - tf.translation;
         let dist = dir.length();
-        let step = stats.speed * CELL_SIZE * dt;
+
+        // Применяем замедление на песке для Wheels и Bipod
+        let sand_mult = if matches!(
+            map.world_to_grid(tf.translation).and_then(|(x, y)| map.get(x, y)),
+            Some(CellType::Sand)
+        ) && matches!(chassis.chassis_type, ChassisType::Wheels | ChassisType::Bipod)
+        {
+            SAND_SPEED_MULT
+        } else {
+            1.0
+        };
+
+        let step = stats.speed * CELL_SIZE * dt * sand_mult;
 
         if dist <= step {
             tf.translation = target_xz;

@@ -12,6 +12,12 @@ pub struct GridPos {
 #[derive(Deserialize)]
 pub enum CellTypeDef {
     Blocked,
+    /// Скала: непроходима для всех, блокирует LOS.
+    Rock,
+    /// Яма/расщелина: непроходима для Wheels/Bipod/Tracks.
+    Pit,
+    /// Песок: замедляет Wheels и Bipod.
+    Sand,
 }
 
 #[derive(Deserialize)]
@@ -98,6 +104,9 @@ pub fn load_map_from_ron(
     for cell in data.cells {
         let ct = match cell.cell_type {
             CellTypeDef::Blocked => CellType::Blocked,
+            CellTypeDef::Rock    => CellType::Rock,
+            CellTypeDef::Pit     => CellType::Pit,
+            CellTypeDef::Sand    => CellType::Sand,
         };
         grid.set(cell.x, cell.y, ct);
     }
