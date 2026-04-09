@@ -171,7 +171,7 @@ Bevy Events для межсистемного общения:
 - [x] **1.2** `core/team.rs` — `Team` enum (Player, Enemy, Neutral), derive Component `[S]`
 - [x] **1.3** `core/health.rs` — `Health { current: f32, max: f32 }`, apply_damage, heal `[S]`
 - [x] **1.4** `core/events.rs` — EntityDamaged/Destroyed observers, StructureCaptured, ResourceChanged `[S]`
-- [ ] **1.5** `core/resources.rs` — `GameConfig` из game.ron, `GameState` (running/paused) `[M]` *(отложено)*
+- [x] **1.5** `core/resources.rs` — `GameConfig` из game.ron, `GameState` (running/paused) `[M]`
 - [x] **1.6** `map/grid.rs` — `MapGrid` 64×64, типы ячеек (Open, Blocked, Structure), конверсия world↔grid `[M]`
 - [x] **1.7** `map/loader.rs` — Загрузка карты из RON (default.ron), заполнение MapGrid `[M]`
 - [x] **1.8** `map/mod.rs` — MapPlugin: спавн плоскости с видимой сеткой Gizmos `[M]`
@@ -245,7 +245,7 @@ Bevy Events для межсистемного общения:
 - [x] **3.13** Debug-панель: спавн робота через egui (chassis, weapons, команда) `[M]`
 - [x] **3.14** ПКМ → MoveTo для выбранного робота `[M]`
 - [x] **3.15** Terrain-коллизия через A* (Blocked/Structure не проходимы) `[S]`
-- [ ] **3.16** Расталкивание роботов при наложении `[M]` *(заглушка `separate_robots`)*
+- [x] **3.16** Расталкивание роботов при наложении `[M]`
 - [x] **3.17** 4 разных Cuboid-меша по типу шасси `[S]`
 - [x] **3.18** `Health::apply_damage`, observer EntityDamaged → EntityDestroyed `[M]`
 
@@ -307,7 +307,7 @@ Bevy Events для межсистемного общения:
 - [x] **5.5** `combat/death.rs` — `on_entity_destroyed`: despawn сущности `[M]`
 - [x] **5.6** `combat/projectile.rs` — `Projectile` с самонаведением, speed=8.0, despawn при попадании `[L]`
 - [x] **5.7** Nuclear area damage 8 units при `armed=true` `[L]` *(нет screen flash)*
-- [ ] **5.8** Nuclear vs structures (structures не имеют Health) `[M]` *(Phase 6)*
+- [x] **5.8** Nuclear vs structures `[M]`
 - [ ] **5.9** Бонус электроники к fire rate `[S]` *(Phase 6)*
 - [x] **5.10** `combat/visuals.rs` — MuzzleFlash gizmo-линии, оранжевые сферы ракет `[M]`
 - [x] **5.11** SeekAndDestroy + targeting = полноценный бой `[M]`

@@ -2,14 +2,16 @@ use bevy::prelude::*;
 
 use crate::{
     core::events::{EntityDamaged, EntityDestroyed},
+    map::grid::{CellType, MapGrid},
     robot::components::{Nuclear, RobotMarker},
     structure::{factory::Factory, warbase::Warbase},
 };
 
-/// Observer: обрабатывает EntityDestroyed — ядерный взрыв (если armed) и деспавн.
+/// Observer: обрабатывает EntityDestroyed — ядерный взрыв (если armed), очистка карты и деспавн.
 pub fn on_entity_destroyed(
     trigger: On<EntityDestroyed>,
     mut commands: Commands,
+    mut map: ResMut<MapGrid>,
     robots: Query<(Entity, &Transform, Option<&Nuclear>), With<RobotMarker>>,
     structures: Query<(Entity, &Transform), Or<(With<Factory>, With<Warbase>)>>,
 ) {
@@ -41,6 +43,18 @@ pub fn on_entity_destroyed(
                     amount: 9999.0,
                     attacker: Some(entity),
                 });
+            }
+        }
+    }
+
+    // Если уничтожена структура — освобождаем её ячейку в MapGrid.
+    if structures.contains(entity) {
+        if let Ok((_, tf)) = structures.get(entity) {
+            if let Some((gx, gy)) = map.world_to_grid(tf.translation) {
+                // Освобождаем только если ячейка принадлежит именно этой entity.
+                if matches!(map.get(gx, gy), Some(CellType::Structure(e)) if e == entity) {
+                    map.set(gx, gy, CellType::Open);
+                }
             }
         }
     }

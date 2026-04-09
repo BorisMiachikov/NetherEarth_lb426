@@ -130,20 +130,28 @@ pub fn follow_path(
 }
 
 /// Расталкивание роботов при наложении (O(n²), допустимо до ~100 роботов).
+/// После толчка позиция зажимается по границам карты и не входит в непроходимые ячейки.
 pub fn separate_robots(
-    mut query: Query<(Entity, &mut Transform), With<RobotMarker>>,
+    time: Res<Time>,
+    map: Res<MapGrid>,
+    mut query: Query<(Entity, &mut Transform, &Chassis), With<RobotMarker>>,
 ) {
+    /// Минимальное расстояние между роботами (в единицах мира = клетках).
     const MIN_DIST: f32 = 1.0;
-    const PUSH: f32 = 0.04;
+    /// Скорость расталкивания (единиц/сек).
+    const PUSH_SPEED: f32 = 2.5;
 
-    // Сначала собираем позиции (immutable), бorrow заканчивается после collect()
+    let dt = time.delta_secs();
+
+    // Собираем позиции заранее, чтобы избежать двойного borrow.
     let positions: Vec<(Entity, Vec3)> = query
         .iter()
-        .map(|(e, tf)| (e, tf.translation))
+        .map(|(e, tf, _)| (e, tf.translation))
         .collect();
 
-    for (entity, mut tf) in &mut query {
+    for (entity, mut tf, chassis) in &mut query {
         let mut push = Vec3::ZERO;
+
         for &(other_e, other_pos) in &positions {
             if entity == other_e {
                 continue;
@@ -154,11 +162,38 @@ pub fn separate_robots(
             );
             let dist = diff.length();
             if dist < MIN_DIST && dist > 0.001 {
-                let push_xz = diff.normalize() * PUSH * (1.0 - dist / MIN_DIST);
+                // Сила толчка пропорциональна степени перекрытия.
+                let strength = PUSH_SPEED * dt * (1.0 - dist / MIN_DIST);
+                let push_xz = diff.normalize() * strength;
                 push += Vec3::new(push_xz.x, 0.0, push_xz.y);
             }
         }
-        tf.translation += push;
+
+        if push == Vec3::ZERO {
+            continue;
+        }
+
+        let new_pos = tf.translation + push;
+
+        // Зажимаем по границам карты.
+        let map_max_x = map.width as f32 * CELL_SIZE - CELL_SIZE * 0.5;
+        let map_max_z = map.height as f32 * CELL_SIZE - CELL_SIZE * 0.5;
+        let clamped = Vec3::new(
+            new_pos.x.clamp(CELL_SIZE * 0.5, map_max_x),
+            tf.translation.y,
+            new_pos.z.clamp(CELL_SIZE * 0.5, map_max_z),
+        );
+
+        // Применяем только если целевая ячейка проходима для данного шасси.
+        let passable = map
+            .world_to_grid(clamped)
+            .and_then(|(gx, gy)| map.get(gx, gy))
+            .map(|cell| cell.is_passable_for(chassis.chassis_type))
+            .unwrap_or(false);
+
+        if passable {
+            tf.translation = clamped;
+        }
     }
 }
 
