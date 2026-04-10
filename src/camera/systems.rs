@@ -1,8 +1,12 @@
-use bevy::{camera::ScalingMode, input::mouse::MouseWheel, prelude::*};
+use bevy::{
+    camera::ScalingMode,
+    ecs::message::MessageReader,
+    input::mouse::{MouseMotion, MouseWheel},
+    prelude::*,
+};
 
-// Углы изометрической камеры (классика: -35.264°, 45°)
+// Угол pitch изометрической камеры (классика: -35.264°)
 const CAMERA_PITCH_DEG: f32 = -35.264;
-const CAMERA_YAW_DEG: f32 = 45.0;
 const CAMERA_DISTANCE: f32 = 40.0;
 
 pub const ZOOM_MIN: f32 = 5.0;
@@ -10,20 +14,27 @@ pub const ZOOM_MAX: f32 = 80.0;
 pub const ZOOM_SPEED: f32 = 2.5;
 pub const ZOOM_DEFAULT: f32 = 20.0;
 
+/// Чувствительность вращения (градусов на пиксель при перетаскивании мышью)
+const ROTATE_SENSITIVITY: f32 = 0.4;
+/// Скорость вращения клавишами Z/C (градусов в секунду)
+const ROTATE_KEY_SPEED: f32 = 90.0;
+
 /// Маркер: изометрическая камера.
 #[derive(Component)]
 pub struct IsometricCamera {
     pub viewport_height: f32,
+    /// Текущий угол yaw в градусах (вокруг вертикальной оси).
+    pub yaw: f32,
 }
 
 /// Маркер на сущности, за которой следит камера.
 #[derive(Component)]
 pub struct CameraTarget;
 
-fn iso_rotation() -> Quat {
+fn make_rotation(yaw_deg: f32) -> Quat {
     Quat::from_euler(
         EulerRot::YXZ,
-        CAMERA_YAW_DEG.to_radians(),
+        yaw_deg.to_radians(),
         CAMERA_PITCH_DEG.to_radians(),
         0.0,
     )
@@ -31,13 +42,15 @@ fn iso_rotation() -> Quat {
 
 /// Спавн камеры при старте. Позиционируется в центре карты по умолчанию.
 pub fn spawn_camera(mut commands: Commands) {
-    let rotation = iso_rotation();
+    let yaw = 45.0_f32;
+    let rotation = make_rotation(yaw);
     let start_pos = Vec3::new(32.0, 0.0, 32.0); // центр карты 64×64
 
     commands.spawn((
         Name::new("IsometricCamera"),
         IsometricCamera {
             viewport_height: ZOOM_DEFAULT,
+            yaw,
         },
         Camera3d::default(),
         Projection::from(OrthographicProjection {
@@ -51,6 +64,39 @@ pub fn spawn_camera(mut commands: Commands) {
     ));
 }
 
+/// Орбитальное вращение камеры:
+/// - средняя кнопка мыши + движение → плавное вращение
+/// - Z → влево, C → вправо
+pub fn rotate_camera(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mouse_buttons: Res<ButtonInput<MouseButton>>,
+    mut motion: MessageReader<MouseMotion>,
+    mut camera: Query<&mut IsometricCamera>,
+) {
+    let Ok(mut cam) = camera.single_mut() else {
+        motion.clear();
+        return;
+    };
+
+    // Вращение мышью (средняя кнопка)
+    if mouse_buttons.pressed(MouseButton::Middle) {
+        let delta_x: f32 = motion.read().map(|e| e.delta.x).sum();
+        cam.yaw -= delta_x * ROTATE_SENSITIVITY;
+    } else {
+        motion.clear();
+    }
+
+    // Вращение клавишами Z / C
+    let dt = time.delta_secs();
+    if keys.pressed(KeyCode::KeyZ) {
+        cam.yaw += ROTATE_KEY_SPEED * dt;
+    }
+    if keys.pressed(KeyCode::KeyC) {
+        cam.yaw -= ROTATE_KEY_SPEED * dt;
+    }
+}
+
 /// Камера следует за сущностью с `CameraTarget` (PostUpdate).
 /// Использует lerp для устранения дрожания при рассинхроне FixedUpdate/PostUpdate.
 pub fn follow_target(
@@ -61,11 +107,11 @@ pub fn follow_target(
     let Ok(target_tf) = target.single() else {
         return;
     };
-    let Ok((mut cam_tf, _)) = camera.single_mut() else {
+    let Ok((mut cam_tf, cam)) = camera.single_mut() else {
         return;
     };
 
-    let rotation = iso_rotation();
+    let rotation = make_rotation(cam.yaw);
     let desired = target_tf.translation + rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE);
 
     // Высокий коэффициент (~20) — почти мгновенно, но без резких скачков
