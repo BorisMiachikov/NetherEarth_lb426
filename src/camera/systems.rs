@@ -17,7 +17,7 @@ pub const ZOOM_DEFAULT: f32 = 20.0;
 /// Чувствительность вращения (градусов на пиксель при перетаскивании мышью)
 const ROTATE_SENSITIVITY: f32 = 0.4;
 /// Скорость вращения клавишами Z/C (градусов в секунду)
-const ROTATE_KEY_SPEED: f32 = 90.0;
+const ROTATE_KEY_SPEED: f32 = 30.0;
 
 /// Маркер: изометрическая камера.
 #[derive(Component)]

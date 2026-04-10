@@ -1,13 +1,15 @@
 use bevy::prelude::*;
 
-use crate::map::grid::MapGrid;
+use crate::{camera::systems::IsometricCamera, map::grid::MapGrid};
 
 use super::components::{PlayerScout, ScoutMoveIntent, ScoutMovement};
 
 /// Перемещает скаута согласно ScoutMoveIntent, зажимает по границам карты и высоте.
+/// Направление движения WASD вычисляется относительно текущего yaw камеры.
 pub fn move_scout(
     time: Res<Time>,
     _map: Res<MapGrid>,
+    camera: Query<&IsometricCamera>,
     mut query: Query<(&mut Transform, &mut ScoutMovement, &ScoutMoveIntent), With<PlayerScout>>,
 ) {
     let Ok((mut transform, mut movement, intent)) = query.single_mut() else {
@@ -17,9 +19,19 @@ pub fn move_scout(
     let dt = time.delta_secs();
     let speed = movement.speed;
 
+    // Поворачиваем вектор движения на yaw камеры чтобы WASD был относительным
+    let yaw = camera
+        .single()
+        .map(|c| c.yaw.to_radians())
+        .unwrap_or(std::f32::consts::FRAC_PI_4); // 45° по умолчанию
+    let (sin_y, cos_y) = yaw.sin_cos();
+    let h = intent.horizontal; // h.x = A/D, h.y = W/S (W=-1)
+    let world_x = h.y * sin_y + h.x * cos_y;
+    let world_z = h.y * cos_y - h.x * sin_y;
+
     // Горизонтальное движение (XZ)
-    transform.translation.x += intent.horizontal.x * speed * dt;
-    transform.translation.z += intent.horizontal.y * speed * dt;
+    transform.translation.x += world_x * speed * dt;
+    transform.translation.z += world_z * speed * dt;
 
     // Вертикальное движение (Y = высота)
     movement.altitude = (movement.altitude + intent.vertical * speed * dt)
