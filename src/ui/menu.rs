@@ -241,6 +241,13 @@ pub fn draw_main_menu(
                 }
                 ui.add_space(8.0);
                 if ui
+                    .add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.editor")))
+                    .clicked()
+                {
+                    next_state.set(AppState::Editor);
+                }
+                ui.add_space(8.0);
+                if ui
                     .add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.quit")))
                     .clicked()
                 {

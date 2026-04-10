@@ -9,7 +9,7 @@ pub struct GridPos {
     pub y: u32,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub enum CellTypeDef {
     Blocked,
     /// Скала: непроходима для всех, блокирует LOS.
@@ -20,14 +20,14 @@ pub enum CellTypeDef {
     Sand,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Clone, Debug)]
 pub struct MapCellDef {
     pub x: u32,
     pub y: u32,
     pub cell_type: CellTypeDef,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub enum FactoryTypeDef {
     General,
     Chassis,
@@ -38,7 +38,7 @@ pub enum FactoryTypeDef {
     Nuclear,
 }
 
-#[derive(Deserialize, Clone, Debug)]
+#[derive(Deserialize, Clone, Debug, PartialEq)]
 pub enum TeamDef {
     Player,
     Enemy,

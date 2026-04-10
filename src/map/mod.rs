@@ -10,6 +10,13 @@ use loader::{load_map_from_ron, MapSpawnPoints, MapStructures};
 
 pub use grid::{CellType as TerrainCell, MapGrid as Map, CELL_SIZE};
 
+/// Маркер: terrain-меш конкретной ячейки. Используется редактором для замены меша.
+#[derive(Component, Debug, Clone, Copy)]
+pub struct TerrainCellMarker {
+    pub x: u32,
+    pub y: u32,
+}
+
 pub struct MapPlugin;
 
 impl Plugin for MapPlugin {
@@ -110,6 +117,7 @@ pub fn spawn_terrain(
             CellType::Rock | CellType::Blocked => {
                 commands.spawn((
                     Name::new(format!("Rock({gx},{gy})")),
+                    TerrainCellMarker { x: gx, y: gy },
                     Mesh3d(rock_mesh.clone()),
                     MeshMaterial3d(rock_mat.clone()),
                     Transform::from_translation(base.with_y(0.7)),
@@ -119,6 +127,7 @@ pub fn spawn_terrain(
                 // Яма — тёмная плоскость чуть ниже уровня земли
                 commands.spawn((
                     Name::new(format!("Pit({gx},{gy})")),
+                    TerrainCellMarker { x: gx, y: gy },
                     Mesh3d(pit_mesh.clone()),
                     MeshMaterial3d(pit_mat.clone()),
                     Transform::from_translation(base.with_y(-0.05)),
@@ -128,6 +137,7 @@ pub fn spawn_terrain(
                 // Песок — цветная плоскость на уровне земли поверх ground plane
                 commands.spawn((
                     Name::new(format!("Sand({gx},{gy})")),
+                    TerrainCellMarker { x: gx, y: gy },
                     Mesh3d(sand_mesh.clone()),
                     MeshMaterial3d(sand_mat.clone()),
                     Transform::from_translation(base.with_y(0.01)),

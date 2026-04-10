@@ -5,6 +5,7 @@
     "menu.scenario": "SCENARIO",
     "menu.new_game": "▶  New Game",
     "menu.continue": "↺  Continue",
+    "menu.editor": "🗺  Level Editor",
     "menu.quit": "✕  Quit",
 
     // Pause

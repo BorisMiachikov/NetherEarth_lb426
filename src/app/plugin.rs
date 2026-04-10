@@ -10,6 +10,7 @@ use crate::{
     command::CommandPlugin,
     core::CorePlugin,
     economy::EconomyPlugin,
+    editor::EditorPlugin,
     localization::LocalizationPlugin,
     map::MapPlugin,
     movement::MovementPlugin,
@@ -55,6 +56,7 @@ impl Plugin for AppPlugin {
             UiPlugin,
             AudioPlugin,
             SavePlugin,
+            EditorPlugin,
         ));
 
         #[cfg(feature = "debug_tools")]

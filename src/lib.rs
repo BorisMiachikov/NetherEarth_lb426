@@ -8,6 +8,7 @@ mod core;
 #[cfg(feature = "debug_tools")]
 mod debug;
 mod economy;
+mod editor;
 pub mod localization;
 mod map;
 mod movement;

@@ -5,6 +5,7 @@
     "menu.scenario": "СЦЕНАРИЙ",
     "menu.new_game": "▶  Новая игра",
     "menu.continue": "↺  Продолжить",
+    "menu.editor": "🗺  Редактор уровней",
     "menu.quit": "✕  Выход",
 
     // Пауза
