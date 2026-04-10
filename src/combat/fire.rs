@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 use crate::{
     core::{events::EntityDamaged, Team},
-    robot::components::{RobotMarker, WeaponSlots, WeaponType},
+    robot::components::{Electronics, RobotMarker, WeaponSlots, WeaponType},
 };
 
 use super::{
@@ -14,7 +14,7 @@ use super::{
 pub fn fire_weapons(
     mut commands: Commands,
     mut query: Query<
-        (Entity, &Transform, &WeaponSlots, &mut WeaponCooldowns, &CombatTarget, &Team),
+        (Entity, &Transform, &WeaponSlots, &mut WeaponCooldowns, &CombatTarget, &Team, Option<&Electronics>),
         With<RobotMarker>,
     >,
     targets: Query<&Transform, With<RobotMarker>>,
@@ -22,7 +22,11 @@ pub fn fire_weapons(
 ) {
     let dt = time.delta_secs();
 
-    for (entity, tf, slots, mut cooldowns, combat_target, team) in &mut query {
+    for (entity, tf, slots, mut cooldowns, combat_target, team, electronics) in &mut query {
+        let reload_mult = match electronics {
+            Some(e) => 1.0 - e.fire_rate_bonus,
+            None => 1.0,
+        };
         let Ok(target_tf) = targets.get(combat_target.0) else {
             continue;
         };
@@ -67,7 +71,7 @@ pub fn fire_weapons(
                 }
             }
 
-            cooldowns.cooldowns[i] = weapon.reload_time;
+            cooldowns.cooldowns[i] = weapon.reload_time * reload_mult;
         }
     }
 }

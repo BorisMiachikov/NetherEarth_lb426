@@ -308,7 +308,7 @@ Bevy Events для межсистемного общения:
 - [x] **5.6** `combat/projectile.rs` — `Projectile` с самонаведением, speed=8.0, despawn при попадании `[L]`
 - [x] **5.7** Nuclear area damage 8 units при `armed=true` `[L]` *(нет screen flash)*
 - [x] **5.8** Nuclear vs structures `[M]`
-- [ ] **5.9** Бонус электроники к fire rate `[S]` *(Phase 6)*
+- [x] **5.9** Бонус электроники к fire rate `[S]`
 - [x] **5.10** `combat/visuals.rs` — MuzzleFlash gizmo-линии, оранжевые сферы ракет `[M]`
 - [x] **5.11** SeekAndDestroy + targeting = полноценный бой `[M]`
 - [ ] **5.12** Combat AI (отступление по порогу здоровья) `[M]` *(Phase 7)*
