@@ -81,8 +81,15 @@ pub fn spawn_structures(
     mut map: ResMut<MapGrid>,
     structures: Res<MapStructures>,
 ) {
-    // --- Фабрики ---
-    let factory_mesh = meshes.add(Cuboid::new(1.4, 1.0, 1.4));
+    // --- Фабрики: корпус + крыша + труба ---
+    let factory_body_mesh = meshes.add(Cuboid::new(1.4, 1.0, 1.4));
+    let factory_roof_mesh = meshes.add(Cuboid::new(1.6, 0.15, 1.6));
+    let factory_pipe_mesh = meshes.add(Cylinder::new(0.15, 0.6));
+    let dark_mat = materials.add(StandardMaterial {
+        base_color: Color::srgb(0.18, 0.18, 0.2),
+        perceptual_roughness: 0.7,
+        ..default()
+    });
 
     for def in &structures.factories {
         let color = team_color(&def.team);
@@ -103,23 +110,50 @@ pub fn spawn_structures(
                 CaptureProgress::new(1.0),
                 team_to_core(&def.team),
                 crate::core::Health::new(200.0),
-                Mesh3d(factory_mesh.clone()),
+                Mesh3d(factory_body_mesh.clone()),
                 MeshMaterial3d(mat),
                 Transform::from_translation(world_pos.with_y(0.5)),
             ))
+            .with_children(|parent| {
+                // Крыша (тёмная плита)
+                parent.spawn((
+                    Mesh3d(factory_roof_mesh.clone()),
+                    MeshMaterial3d(dark_mat.clone()),
+                    Transform::from_xyz(0.0, 0.57, 0.0),
+                ));
+                // Труба с краю крыши
+                parent.spawn((
+                    Mesh3d(factory_pipe_mesh.clone()),
+                    MeshMaterial3d(dark_mat.clone()),
+                    Transform::from_xyz(0.4, 0.95, -0.4),
+                ));
+            })
             .id();
 
         map.set(def.x, def.y, CellType::Structure(entity));
     }
 
-    // --- Варбейсы ---
-    let warbase_mesh = meshes.add(Cuboid::new(2.0, 2.0, 2.0));
+    // --- Варбейсы: корпус + купол + 4 угловые башенки ---
+    let warbase_body_mesh = meshes.add(Cuboid::new(2.0, 1.6, 2.0));
+    let warbase_dome_mesh = meshes.add(Sphere::new(0.9));
+    let warbase_tower_mesh = meshes.add(Cuboid::new(0.35, 1.4, 0.35));
 
     for def in &structures.warbases {
         let color = team_color(&def.team);
         let mat = materials.add(StandardMaterial {
             base_color: color,
             emissive: LinearRgba::from(color) * 0.3,
+            ..default()
+        });
+        let dome_mat = materials.add(StandardMaterial {
+            base_color: color,
+            emissive: LinearRgba::from(color) * 0.8,
+            metallic: 0.5,
+            ..default()
+        });
+        let tower_mat = materials.add(StandardMaterial {
+            base_color: Color::srgb(0.25, 0.25, 0.28),
+            perceptual_roughness: 0.6,
             ..default()
         });
         let world_pos = map.grid_to_world(def.x, def.y);
@@ -131,10 +165,26 @@ pub fn spawn_structures(
                 ProductionQueue::default(),
                 team_to_core(&def.team),
                 crate::core::Health::new(9999.0),
-                Mesh3d(warbase_mesh.clone()),
+                Mesh3d(warbase_body_mesh.clone()),
                 MeshMaterial3d(mat),
-                Transform::from_translation(world_pos.with_y(1.0)),
+                Transform::from_translation(world_pos.with_y(0.8)),
             ))
+            .with_children(|parent| {
+                // Купол сверху корпуса
+                parent.spawn((
+                    Mesh3d(warbase_dome_mesh.clone()),
+                    MeshMaterial3d(dome_mat),
+                    Transform::from_xyz(0.0, 0.8, 0.0),
+                ));
+                // 4 угловые башенки
+                for (x, z) in [(-0.85, -0.85), (0.85, -0.85), (-0.85, 0.85), (0.85, 0.85)] {
+                    parent.spawn((
+                        Mesh3d(warbase_tower_mesh.clone()),
+                        MeshMaterial3d(tower_mat.clone()),
+                        Transform::from_xyz(x, 0.1, z),
+                    ));
+                }
+            })
             .id();
 
         map.set(def.x, def.y, CellType::Structure(entity));

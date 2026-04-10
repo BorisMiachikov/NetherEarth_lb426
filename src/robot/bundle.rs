@@ -12,13 +12,98 @@ use super::{
     registry::ModuleRegistry,
 };
 
-/// Меш по типу шасси.
+/// Основной меш корпуса робота по типу шасси.
 pub fn chassis_mesh(ct: ChassisType, meshes: &mut Assets<Mesh>) -> Handle<Mesh> {
     match ct {
-        ChassisType::Wheels => meshes.add(Cuboid::new(0.9, 0.5, 1.2)),
-        ChassisType::Bipod => meshes.add(Cuboid::new(0.7, 0.8, 0.7)),
-        ChassisType::Tracks => meshes.add(Cuboid::new(1.1, 0.5, 1.4)),
+        ChassisType::Wheels => meshes.add(Cuboid::new(0.9, 0.4, 1.2)),
+        ChassisType::Bipod => meshes.add(Cuboid::new(0.6, 0.6, 0.5)),
+        ChassisType::Tracks => meshes.add(Cuboid::new(0.9, 0.45, 1.3)),
         ChassisType::AntiGrav => meshes.add(Cuboid::new(0.8, 0.3, 0.8)),
+    }
+}
+
+/// Материал для декоративных деталей (колёса, гусеницы, ноги).
+fn dark_material(materials: &mut Assets<StandardMaterial>) -> Handle<StandardMaterial> {
+    materials.add(StandardMaterial {
+        base_color: Color::srgb(0.12, 0.12, 0.14),
+        perceptual_roughness: 0.8,
+        ..default()
+    })
+}
+
+/// Светящийся материал (для антиграв-диска, куполов).
+fn glow_material(
+    materials: &mut Assets<StandardMaterial>,
+    color: Color,
+) -> Handle<StandardMaterial> {
+    materials.add(StandardMaterial {
+        base_color: color,
+        emissive: LinearRgba::from(color) * 2.0,
+        ..default()
+    })
+}
+
+/// Спавнит декоративные дочерние меши для шасси. Вызывается внутри with_children.
+/// Дети НЕ имеют Pickable, чтобы клик попадал в основной корпус (раскаст сквозь них).
+pub fn spawn_chassis_details(
+    parent: &mut ChildSpawnerCommands,
+    ct: ChassisType,
+    meshes: &mut Assets<Mesh>,
+    materials: &mut Assets<StandardMaterial>,
+) {
+    let dark = dark_material(materials);
+
+    match ct {
+        ChassisType::Wheels => {
+            // 4 колеса по углам корпуса (0.9 × 0.4 × 1.2)
+            let wheel_mesh = meshes.add(Cylinder::new(0.2, 0.18));
+            let wheel_rot = Quat::from_rotation_z(std::f32::consts::FRAC_PI_2);
+            for (x, z) in [(-0.5, -0.45), (0.5, -0.45), (-0.5, 0.45), (0.5, 0.45)] {
+                parent.spawn((
+                    Mesh3d(wheel_mesh.clone()),
+                    MeshMaterial3d(dark.clone()),
+                    Transform::from_xyz(x, -0.2, z).with_rotation(wheel_rot),
+                ));
+            }
+        }
+        ChassisType::Bipod => {
+            // 2 ноги вниз + "голова" сверху (корпус = торс 0.6 × 0.6 × 0.5)
+            let leg_mesh = meshes.add(Cuboid::new(0.18, 0.5, 0.18));
+            for x in [-0.18, 0.18] {
+                parent.spawn((
+                    Mesh3d(leg_mesh.clone()),
+                    MeshMaterial3d(dark.clone()),
+                    Transform::from_xyz(x, -0.55, 0.0),
+                ));
+            }
+            let head_mesh = meshes.add(Sphere::new(0.18));
+            parent.spawn((
+                Mesh3d(head_mesh),
+                MeshMaterial3d(dark.clone()),
+                Transform::from_xyz(0.0, 0.45, 0.0),
+            ));
+        }
+        ChassisType::Tracks => {
+            // 2 длинных гусеницы по бокам корпуса (0.9 × 0.45 × 1.3)
+            let track_mesh = meshes.add(Cuboid::new(0.25, 0.35, 1.5));
+            for x in [-0.55, 0.55] {
+                parent.spawn((
+                    Mesh3d(track_mesh.clone()),
+                    MeshMaterial3d(dark.clone()),
+                    Transform::from_xyz(x, -0.1, 0.0),
+                ));
+            }
+        }
+        ChassisType::AntiGrav => {
+            // Светящийся диск снизу
+            let disc_mesh = meshes.add(Cylinder::new(0.5, 0.05));
+            let glow = glow_material(materials, Color::srgb(0.3, 0.9, 1.0));
+            parent.spawn((
+                Mesh3d(disc_mesh),
+                MeshMaterial3d(glow),
+                Transform::from_xyz(0.0, -0.2, 0.0),
+            ));
+        }
     }
 }
 
@@ -116,6 +201,11 @@ pub fn spawn_robot(
         vision_range,
         crate::movement::steering::StuckDetector::default(),
     ));
+
+    // Декоративные дочерние меши (колёса, ноги, гусеницы, антиграв-диск)
+    entity.with_children(|parent| {
+        spawn_chassis_details(parent, blueprint.chassis, meshes, materials);
+    });
 
     if let Some(elec) = electronics_opt {
         entity.insert(Electronics {
