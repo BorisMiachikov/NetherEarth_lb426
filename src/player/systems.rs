@@ -91,6 +91,7 @@ pub fn spawn_scout(
             ScoutMoveIntent::default(),
             crate::core::Health::new(100.0),
             crate::core::Team::Player,
+            crate::editor::GameWorldEntity,
             Mesh3d(body_mesh),
             MeshMaterial3d(body_mat),
             Transform::from_translation(world_pos.with_y(movement.altitude)),
