@@ -7,6 +7,7 @@ pub mod systems;
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
+use crate::camera::systems::rotate_camera;
 use commands_ui::{draw_command_indicators, right_click_move, robot_info_panel, CommandUiState};
 use input::read_scout_input;
 use selection::{
@@ -38,7 +39,12 @@ impl Plugin for PlayerPlugin {
                 )
                     .run_if(in_state(AppState::Playing)),
             )
-            .add_systems(FixedUpdate, move_scout.run_if(in_state(AppState::Playing)))
+            .add_systems(
+                Update,
+                move_scout
+                    .after(rotate_camera)
+                    .run_if(in_state(AppState::Playing)),
+            )
             .add_systems(
                 EguiPrimaryContextPass,
                 robot_info_panel.run_if(in_state(AppState::Playing)),
