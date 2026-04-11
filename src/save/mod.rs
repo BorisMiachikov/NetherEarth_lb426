@@ -9,6 +9,8 @@ use systems::{
     on_trigger_load_autosave, on_trigger_new_game, on_trigger_save, LastAutoSaveDay, PendingLoad,
 };
 
+use crate::app::state::AppState;
+
 pub use systems::{TriggerLoad, TriggerLoadAutosave, TriggerNewGame, TriggerSave};
 pub use types::SAVE_SLOT_COUNT;
 
@@ -28,6 +30,6 @@ impl Plugin for SavePlugin {
                 Update,
                 apply_pending_load.run_if(|p: Res<PendingLoad>| p.0.is_some()),
             )
-            .add_systems(FixedUpdate, check_autosave);
+            .add_systems(FixedUpdate, check_autosave.run_if(in_state(AppState::Playing)));
     }
 }

@@ -8,6 +8,8 @@ use collision::scout_collision;
 use grid::{CellType, MapGrid};
 use loader::{load_map_from_ron, MapSpawnPoints, MapStructures};
 
+use crate::app::state::AppState;
+
 pub use grid::{CellType as TerrainCell, MapGrid as Map, CELL_SIZE};
 
 /// Маркер: terrain-меш конкретной ячейки. Используется редактором для замены меша.
@@ -41,7 +43,7 @@ impl Plugin for MapPlugin {
             .insert_resource(structures)
             .add_systems(Startup, spawn_ground)
             .add_systems(Startup, spawn_terrain.after(spawn_ground))
-            .add_systems(FixedUpdate, scout_collision);
+            .add_systems(FixedUpdate, scout_collision.run_if(in_state(AppState::Playing)));
     }
 }
 

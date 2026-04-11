@@ -200,6 +200,7 @@ pub fn spawn_robot(
         WeaponCooldowns::default(),
         vision_range,
         crate::movement::steering::StuckDetector::default(),
+        crate::editor::GameWorldEntity,
     ));
 
     // Декоративные дочерние меши (колёса, ноги, гусеницы, антиграв-диск)

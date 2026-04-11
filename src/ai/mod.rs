@@ -10,6 +10,8 @@ use systems::{
     seek_destroy_base, update_seek_destroy,
 };
 
+use crate::app::state::AppState;
+
 pub struct AiPlugin;
 
 impl Plugin for AiPlugin {
@@ -26,7 +28,7 @@ impl Plugin for AiPlugin {
                     update_seek_destroy,
                     seek_destroy_base,
                     arm_nuclear_on_arrival,
-                ),
+                ).run_if(in_state(AppState::Playing)),
             );
     }
 }

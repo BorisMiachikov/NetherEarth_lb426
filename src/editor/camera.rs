@@ -5,21 +5,17 @@ use bevy::{
     prelude::*,
 };
 
-use crate::{
-    camera::systems::{ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, ZOOM_SPEED},
-    editor::EditorEntity,
-};
+use crate::camera::systems::{IsometricCamera, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, ZOOM_SPEED};
 
 const CAMERA_PITCH_DEG: f32 = -35.264;
 const CAMERA_DISTANCE: f32  = 40.0;
 const CAMERA_MOVE_SPEED: f32 = 20.0;
 
-/// Маркер: изометрическая камера редактора.
+/// Маркер-компонент, навешиваемый на IsometricCamera при входе в AppState::Editor.
+/// Не является отдельной сущностью — только указывает, что IsometricCamera сейчас в режиме редактора.
+/// Используется в pick_cell и free_camera_movement для фильтрации запросов.
 #[derive(Component)]
-pub struct EditorCamera {
-    pub viewport_height: f32,
-    pub yaw: f32,
-}
+pub struct EditorCamera;
 
 fn make_rotation(yaw_deg: f32) -> Quat {
     Quat::from_euler(
@@ -30,44 +26,32 @@ fn make_rotation(yaw_deg: f32) -> Quat {
     )
 }
 
-/// Спавн изометрической камеры при входе в Editor.
-pub fn spawn_editor_camera(mut commands: Commands) {
-    let yaw = 45.0_f32;
-    let rotation = make_rotation(yaw);
-    let start_pos = Vec3::new(32.0, 0.0, 32.0);
-
-    commands.spawn((
-        Name::new("EditorCamera"),
-        EditorEntity,
-        EditorCamera {
-            viewport_height: ZOOM_DEFAULT,
-            yaw,
-        },
-        Camera3d::default(),
-        Projection::from(OrthographicProjection {
-            scaling_mode: ScalingMode::FixedVertical {
-                viewport_height: ZOOM_DEFAULT,
-            },
-            ..OrthographicProjection::default_3d()
-        }),
-        Transform::from_translation(start_pos + rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE))
-            .with_rotation(rotation),
-    ));
+/// Сбрасывает IsometricCamera в центр карты при входе в редактор.
+pub fn reset_camera_for_editor(
+    mut camera: Query<(&mut Transform, &mut IsometricCamera)>,
+) {
+    let Ok((mut tf, mut cam)) = camera.single_mut() else { return };
+    cam.yaw = 45.0;
+    let rotation = make_rotation(cam.yaw);
+    let center = Vec3::new(32.0, 0.0, 32.0);
+    tf.translation = center + rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE);
+    tf.rotation = rotation;
 }
 
-/// Свободное перемещение камеры: WASD + зум колесом.
-/// Нет слежения за скаутом, нет ограничения по высоте.
+/// Свободное перемещение IsometricCamera в режиме редактора: WASD + зум колесом.
+/// Запускается только когда IsometricCamera имеет маркер EditorCamera.
 pub fn free_camera_movement(
     time: Res<Time>,
     keys: Res<ButtonInput<KeyCode>>,
     mut scroll: MessageReader<MouseWheel>,
-    mut camera: Query<(&mut Transform, &mut Projection, &mut EditorCamera)>,
+    // Запрашиваем IsometricCamera с маркером EditorCamera
+    mut camera: Query<(&mut Transform, &mut Projection, &mut IsometricCamera), With<EditorCamera>>,
 ) {
     let Ok((mut tf, mut proj, mut cam)) = camera.single_mut() else {
         return;
     };
 
-    // Зум
+    // Зум колесом
     let scroll_delta: f32 = scroll.read().map(|e| e.y).sum();
     if scroll_delta != 0.0 {
         cam.viewport_height =
@@ -79,7 +63,7 @@ pub fn free_camera_movement(
         }
     }
 
-    // Движение WASD в плоскости карты (camera-relative)
+    // Движение WASD
     let dt = time.delta_secs();
     let (sin_y, cos_y) = cam.yaw.to_radians().sin_cos();
 
@@ -95,11 +79,9 @@ pub fn free_camera_movement(
         let move_vec = Vec3::new(world_x, 0.0, world_z).normalize() * CAMERA_MOVE_SPEED * dt;
 
         let rotation = make_rotation(cam.yaw);
-        let desired = tf.translation + move_vec;
-        tf.translation = desired;
-        // Пересчитываем позицию относительно нового pivot
         let pivot = tf.translation - rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE);
-        tf.translation = pivot + rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE);
+        let new_pivot = pivot + move_vec;
+        tf.translation = new_pivot + rotation * Vec3::new(0.0, 0.0, CAMERA_DISTANCE);
         tf.rotation = rotation;
     }
 

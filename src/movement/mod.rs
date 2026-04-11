@@ -9,6 +9,8 @@ use steering::{compute_path, detect_stuck_robots, follow_path, separate_robots};
 pub use steering::{CurrentPath, StuckDetector};
 pub use velocity::{MovementTarget, Velocity};
 
+use crate::app::state::AppState;
+
 /// Выбирает точку исследования в квадранте, противоположном текущей позиции.
 /// Детерминировано по entity id + текущей позиции.
 pub fn exploration_target(entity: Entity, pos: Vec3, map_w: u32, map_h: u32) -> Vec3 {
@@ -45,7 +47,7 @@ impl Plugin for MovementPlugin {
                 compute_path.after(detect_stuck_robots),
                 follow_path.after(compute_path),
                 separate_robots.after(follow_path),
-            ),
+            ).run_if(in_state(AppState::Playing)),
         );
     }
 }

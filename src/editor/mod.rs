@@ -11,10 +11,13 @@ use bevy::prelude::*;
 use crate::{
     app::state::AppState,
     camera::systems::IsometricCamera,
-    map::grid::MapGrid,
+    map::{
+        grid::MapGrid,
+        loader::TeamDef,
+    },
 };
 
-use camera::{spawn_editor_camera, free_camera_movement};
+use camera::{free_camera_movement, reset_camera_for_editor, EditorCamera};
 use picking::pick_cell;
 use state::EditorState;
 use terrain::{on_rebuild_terrain_cell, RebuildTerrainCell};
@@ -28,10 +31,16 @@ impl Plugin for EditorPlugin {
         app.init_resource::<EditorState>()
             // Observer для пересборки terrain-мешей
             .add_observer(on_rebuild_terrain_cell)
-            // Вход в режим редактора: выключаем игровую камеру, прячем игровые сущности
-            .add_systems(OnEnter(AppState::Editor), (spawn_editor_camera, on_enter_editor))
-            // Выход из режима редактора: включаем игровую камеру обратно
-            .add_systems(OnExit(AppState::Editor), (cleanup_editor, on_exit_editor))
+            // Вход в Editor:
+            //   IsometricCamera остаётся активной (egui привязан к ней с самого старта).
+            //   Добавляем маркер EditorCamera на неё — включает editor-режим движения/пикинга.
+            //   Сбрасываем позицию камеры в центр карты.
+            .add_systems(
+                OnEnter(AppState::Editor),
+                (on_enter_editor, reset_camera_for_editor).chain(),
+            )
+            // Выход из Editor: убираем маркер, возвращаем видимость
+            .add_systems(OnExit(AppState::Editor), (on_exit_editor, cleanup_editor).chain())
             // Логика (Update)
             .add_systems(
                 Update,
@@ -42,6 +51,7 @@ impl Plugin for EditorPlugin {
                     apply_tool,
                     update_hover_preview,
                     draw_editor_grid,
+                    draw_editor_structures,
                 )
                     .run_if(in_state(AppState::Editor)),
             )
@@ -61,44 +71,85 @@ fn draw_editor_grid(mut gizmos: Gizmos, grid: Res<MapGrid>) {
     let h = grid.height as f32;
     for x in 0..=grid.width {
         let xf = x as f32;
-        gizmos.line(
-            Vec3::new(xf, 0.02, 0.0),
-            Vec3::new(xf, 0.02, h),
-            color,
-        );
+        gizmos.line(Vec3::new(xf, 0.02, 0.0), Vec3::new(xf, 0.02, h), color);
     }
     for y in 0..=grid.height {
         let yf = y as f32;
-        gizmos.line(
-            Vec3::new(0.0, 0.02, yf),
-            Vec3::new(w,   0.02, yf),
-            color,
-        );
+        gizmos.line(Vec3::new(0.0, 0.02, yf), Vec3::new(w, 0.02, yf), color);
     }
 }
 
-/// При входе в редактор: отключаем игровую IsometricCamera и прячем игровые сущности.
-fn on_enter_editor(
-    mut game_cameras: Query<&mut Camera, With<IsometricCamera>>,
-    mut game_visibility: Query<&mut Visibility, With<GameWorldEntity>>,
-) {
-    for mut cam in &mut game_cameras {
-        cam.is_active = false;
+/// Gizmos-предпросмотр фабрик, варбейсов и спавна игрока из EditorState.
+fn draw_editor_structures(mut gizmos: Gizmos, editor: Res<EditorState>, grid: Res<MapGrid>) {
+    // Фабрики: квадрат на полу + вертикальная линия-флажок
+    for f in &editor.factories {
+        let color = team_gizmo_color(&f.team);
+        let base = grid.grid_to_world(f.x, f.y);
+        let floor = base + Vec3::Y * 0.03;
+        gizmos.rect(Isometry3d::from_translation(floor), Vec2::splat(0.8), color);
+        gizmos.line(base + Vec3::Y * 0.03, base + Vec3::Y * 0.9, color);
+        gizmos.line(base + Vec3::Y * 0.9, base + Vec3::new(0.25, 0.9, 0.0), color);
+        gizmos.line(base + Vec3::new(0.25, 0.9, 0.0), base + Vec3::new(0.25, 0.65, 0.0), color);
     }
-    for mut vis in &mut game_visibility {
+
+    // Варбейсы: двойной квадрат + крест
+    for w in &editor.warbases {
+        let color = team_gizmo_color(&w.team);
+        let base = grid.grid_to_world(w.x, w.y);
+        let floor = base + Vec3::Y * 0.03;
+        gizmos.rect(Isometry3d::from_translation(floor), Vec2::splat(0.95), color);
+        gizmos.rect(Isometry3d::from_translation(floor), Vec2::splat(0.75), color);
+        gizmos.line(base + Vec3::new(-0.35, 0.03, 0.0), base + Vec3::new(0.35, 0.03, 0.0), color);
+        gizmos.line(base + Vec3::new(0.0, 0.03, -0.35), base + Vec3::new(0.0, 0.03, 0.35), color);
+    }
+
+    // Точка спавна игрока: жёлтый ромб + крест
+    let (sx, sy) = editor.player_spawn;
+    let base = grid.grid_to_world(sx, sy);
+    let y = base + Vec3::Y * 0.04;
+    let sc = Color::srgb(1.0, 0.9, 0.0);
+    let r = 0.4_f32;
+    gizmos.line(y + Vec3::new(-r, 0.0, 0.0), y + Vec3::new(0.0, 0.0, -r), sc);
+    gizmos.line(y + Vec3::new(0.0, 0.0, -r), y + Vec3::new(r, 0.0, 0.0), sc);
+    gizmos.line(y + Vec3::new(r, 0.0, 0.0), y + Vec3::new(0.0, 0.0, r), sc);
+    gizmos.line(y + Vec3::new(0.0, 0.0, r), y + Vec3::new(-r, 0.0, 0.0), sc);
+    gizmos.line(y + Vec3::new(-0.25, 0.0, 0.0), y + Vec3::new(0.25, 0.0, 0.0), sc);
+    gizmos.line(y + Vec3::new(0.0, 0.0, -0.25), y + Vec3::new(0.0, 0.0, 0.25), sc);
+}
+
+fn team_gizmo_color(team: &TeamDef) -> Color {
+    match team {
+        TeamDef::Player  => Color::srgb(0.15, 0.85, 0.25),
+        TeamDef::Enemy   => Color::srgb(0.95, 0.15, 0.15),
+        TeamDef::Neutral => Color::srgb(0.75, 0.75, 0.75),
+    }
+}
+
+/// Вход в Editor: добавляем маркер EditorCamera на IsometricCamera + скрываем игровые сущности.
+/// IsometricCamera остаётся активной — egui продолжает работать.
+fn on_enter_editor(
+    mut commands: Commands,
+    iso_cam: Query<Entity, With<IsometricCamera>>,
+    mut game_vis: Query<&mut Visibility, With<GameWorldEntity>>,
+) {
+    if let Ok(entity) = iso_cam.single() {
+        commands.entity(entity).insert(EditorCamera);
+    }
+    for mut vis in &mut game_vis {
         *vis = Visibility::Hidden;
     }
 }
 
-/// При выходе из редактора: включаем игровую IsometricCamera и показываем игровые сущности.
+/// Выход из Editor: снимаем маркер EditorCamera + возвращаем видимость игровым сущностям.
 fn on_exit_editor(
-    mut game_cameras: Query<&mut Camera, With<IsometricCamera>>,
-    mut game_visibility: Query<&mut Visibility, With<GameWorldEntity>>,
+    mut commands: Commands,
+    iso_cam: Query<Entity, With<IsometricCamera>>,
+    mut game_vis: Query<&mut Visibility, With<GameWorldEntity>>,
 ) {
-    for mut cam in &mut game_cameras {
-        cam.is_active = true;
+    if let Ok(entity) = iso_cam.single() {
+        commands.entity(entity).remove::<EditorCamera>();
     }
-    for mut vis in &mut game_visibility {
+    for mut vis in &mut game_vis {
         *vis = Visibility::Inherited;
     }
 }
@@ -112,14 +163,13 @@ fn editor_exit_to_menu(
     if !keys.just_pressed(KeyCode::Escape) {
         return;
     }
-    // TODO: если dirty — показать диалог (задача 11.18)
     if state.dirty {
-        // пока просто выходим; диалог будет в 11.18
+        // TODO: диалог подтверждения (задача 11.18)
     }
     next_state.set(AppState::MainMenu);
 }
 
-/// Убираем сущности редактора при выходе из состояния.
+/// Убираем сущности редактора (EditorEntity) при выходе из состояния.
 fn cleanup_editor(mut commands: Commands, query: Query<Entity, With<EditorEntity>>) {
     for entity in &query {
         commands.entity(entity).despawn();
@@ -131,6 +181,5 @@ fn cleanup_editor(mut commands: Commands, query: Query<Entity, With<EditorEntity
 pub struct EditorEntity;
 
 /// Маркер: игровая сущность (скаут, структуры, роботы), которую нужно скрывать в редакторе.
-/// Навешивается на сущности при их спавне через PlayerPlugin / StructurePlugin / RobotPlugin.
 #[derive(Component)]
 pub struct GameWorldEntity;

@@ -16,6 +16,8 @@ use visuals::{draw_muzzle_flashes, draw_projectiles};
 pub use projectile::Projectile;
 pub use weapon::{CombatTarget, MuzzleFlash, WeaponCooldowns};
 
+use crate::app::state::AppState;
+
 pub struct CombatPlugin;
 
 impl Plugin for CombatPlugin {
@@ -27,8 +29,12 @@ impl Plugin for CombatPlugin {
                     acquire_targets,
                     fire_weapons.after(acquire_targets),
                     move_projectiles.after(fire_weapons),
-                ),
+                ).run_if(in_state(AppState::Playing)),
             )
-            .add_systems(Update, (draw_muzzle_flashes, draw_projectiles));
+            .add_systems(
+                Update,
+                (draw_muzzle_flashes, draw_projectiles)
+                    .run_if(in_state(AppState::Playing).or(in_state(AppState::Paused))),
+            );
     }
 }

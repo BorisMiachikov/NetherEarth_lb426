@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
 use crate::{
+    app::state::AppState,
     core::Team,
     map::{
         grid::{CellType, MapGrid},
@@ -34,15 +35,21 @@ impl Plugin for StructurePlugin {
                     seek_capture_navigation,
                     update_capture_progress.after(seek_capture_navigation),
                     tick_production_queue,
-                ),
+                ).run_if(in_state(AppState::Playing)),
             )
-            // Не-egui визуалы — в Update
+            // Не-egui визуалы — только в игровых состояниях
             .add_systems(
                 Update,
-                (draw_capture_progress, draw_production_progress),
+                (draw_capture_progress, draw_production_progress)
+                    .run_if(in_state(AppState::Playing).or(in_state(AppState::Paused))),
             )
-            // Тултип типа/владельца структуры — всегда активен
-            .add_systems(EguiPrimaryContextPass, structure_tooltip);
+            // Тултип — только в игровых состояниях
+            .add_systems(
+                EguiPrimaryContextPass,
+                structure_tooltip.run_if(
+                    in_state(AppState::Playing).or(in_state(AppState::Paused)).or(in_state(AppState::GameOver))
+                ),
+            );
     }
 }
 

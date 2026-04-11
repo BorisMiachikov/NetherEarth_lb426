@@ -10,6 +10,8 @@ use events::on_entity_damaged;
 use resources::{add_pause_sync_systems, load_game_config};
 use time::{tick_game_time, GameTime};
 
+use crate::app::state::AppState;
+
 pub use events::{EntityDamaged, EntityDestroyed, ResourceChanged, ResourceType, StructureCaptured};
 pub use health::Health;
 pub use resources::GameConfig;
@@ -29,7 +31,7 @@ impl Plugin for CorePlugin {
         app.insert_resource(config)
             .insert_resource(game_time)
             .add_observer(on_entity_damaged)
-            .add_systems(FixedUpdate, tick_game_time);
+            .add_systems(FixedUpdate, tick_game_time.run_if(in_state(AppState::Playing)));
 
         add_pause_sync_systems(app);
     }

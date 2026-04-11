@@ -9,6 +9,8 @@ use bevy::prelude::*;
 use registry::{load_module_registry, ModuleRegistry};
 use systems::recalc_stats;
 
+use crate::app::state::AppState;
+
 pub use builder::RobotBlueprint;
 pub use components::ChassisType;
 pub use registry::ModuleRegistry as Registry;
@@ -40,6 +42,6 @@ impl Plugin for RobotPlugin {
         });
 
         app.insert_resource(registry)
-            .add_systems(FixedUpdate, recalc_stats);
+            .add_systems(FixedUpdate, recalc_stats.run_if(in_state(AppState::Playing)));
     }
 }
