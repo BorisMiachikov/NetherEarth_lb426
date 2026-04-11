@@ -3,8 +3,9 @@
 **Стек:** Rust (Stable), Bevy 0.18, Serde + RON  
 **Тип:** Solo-разработка  
 **Дата создания:** 2026-04-04  
-**Последнее обновление:** 2026-04-10 — Вращение камеры (MMB + Z/C), WASD относительно камеры
-**Авторитетная спецификация:** `1/Nether Earth LB426.md` (v2.0)
+**Последнее обновление:** 2026-04-11 — Редактор уровней (Фаза 11, ~80%), исправление регрессии редактора  
+**Авторитетная спецификация:** `1/Nether Earth LB426.md` (v2.0)  
+**Документация:** [README](README.md) · [Архитектура](docs/ARCHITECTURE.md) · [Геймплей](docs/GAMEPLAY.md) · [Редактор](docs/EDITOR.md)
 
 ---
 
@@ -26,9 +27,9 @@
 | `ui` | ✅ Реализован | HUD, миникарта, Builder UI, меню, пауза, Game Over, выбор сценария, панель юнитов |
 | `camera` | ✅ Реализован | Изометрическая орто-камера, зум скроллом, следование за скаутом, орбитальное вращение (MMB + Z/C), WASD относительно камеры |
 | `audio` | 🔶 Скелет | AudioSettings ресурс, интеграция без .ogg файлов |
-| `save` | ⬛ Заглушка | Только stub-плагин |
+| `save` | ✅ Реализован | SaveData, 3 слота + автосохранение RON, сериализация всех роботов/структур/ресурсов |
 | `debug` | ✅ Реализован | Gizmos сетка, overlay (координаты/FPS/GameTime), egui-панель спавна роботов |
-| `editor` | ⬛ Не начат | Редактор уровней: terrain-кисть, структуры, сохранение карт |
+| `editor` | 🔶 В разработке (~80%) | Terrain-кисть, структуры (gizmos-превью), камера WASD, сохранение/загрузка RON, валидация. Pending: Undo/Redo, Play-тест, диалог dirty |
 
 ---
 
@@ -504,31 +505,42 @@ Bevy Events для межсистемного общения:
 
 ---
 
-### Фаза 11: Редактор уровней (10-14 дней)
+### 🔶 Фаза 11: Редактор уровней (~80% завершена)
 
 **Цель:** Встроенный редактор уровней: terrain-кисть, расстановка фабрик/варбейсов/spawn, настройка размера карты, сохранение в `data/maps/*.ron` и `data/scenarios/*.ron`, тестовый запуск отредактированной карты одним кликом.
 
 **Зависимости:** Фазы 2 (Map/Structures), 8 (UI), 9 (Save/Load паттерны)
 
-- [ ] **11.1** `AppState::Editor` — новое состояние; кнопка «Редактор уровней» в главном меню `[S]`
-- [ ] **11.2** `editor/mod.rs` — `EditorPlugin`, регистрация систем в `OnEnter(Editor)` / `OnExit(Editor)` `[S]`
-- [ ] **11.3** `editor/state.rs` — `EditorState { current_tool, brush_cell_type, current_map: MapData, dirty, file_name }` `[M]`
-- [ ] **11.4** `editor/camera.rs` — свободная камера редактора (WASD, без следования за скаутом, без лимита высоты) `[M]`
-- [ ] **11.5** `editor/picking.rs` — ray-пик клетки под курсором через `bevy_picking` или ручной raycast к плоскости Y=0 `[M]`
-- [ ] **11.6** `editor/tools.rs` — enum `EditorTool { TerrainBrush, PlaceFactory, PlaceWarbase, PlacePlayerSpawn, Erase }` + диспатч клика по инструменту `[M]`
-- [ ] **11.7** Terrain-кисть: LMB — применить `brush_cell_type` к клетке; поддержка Open/Blocked/Rock/Pit/Sand; размер кисти 1/3/5 клеток `[M]`
-- [ ] **11.8** Структуры: placement через клик, предпросмотр полупрозрачным мешем под курсором; валидация — ячейка должна быть Open `[M]`
-- [ ] **11.9** `editor/ui.rs` — панель инструментов (egui слева): выбор инструмента, brush size, тип клетки, тип фабрики, команда (Player/Enemy/Neutral) `[L]`
-- [ ] **11.10** Панель свойств карты (egui справа): имя, описание, размер (32×32/64×64/96×96), счётчики фабрик/варбейсов/клеток по типам `[M]`
+> **Архитектурное решение:** `EditorCamera` — чистый маркер-компонент на `IsometricCamera` (не отдельная сущность).  
+> Это сохраняет привязку bevy_egui к первой камере (bevy_egui 0.39 `setup_primary_egui_context_system`).  
+> `OnEnter(Editor)` вставляет маркер + скрывает `GameWorldEntity`; `OnExit` — удаляет маркер + возвращает видимость.
+
+- [x] **11.1** `AppState::Editor` — новое состояние; кнопка «Редактор уровней» в главном меню `[S]`
+- [x] **11.2** `editor/mod.rs` — `EditorPlugin`, регистрация систем в `OnEnter(Editor)` / `OnExit(Editor)` `[S]`
+- [x] **11.3** `editor/state.rs` — `EditorState { current_tool, brush_cell_type, factories, warbases, player_spawn, dirty, file_name }` `[M]`
+- [x] **11.4** `editor/camera.rs` — `EditorCamera` маркер, `free_camera_movement` (WASD+зум+Z/C), `reset_camera_for_editor` `[M]`
+- [x] **11.5** `editor/picking.rs` — ray-пик клетки под курсором: raycast к плоскости Y=0 `[M]`
+- [x] **11.6** `editor/tools.rs` — `EditorTool { TerrainBrush, PlaceFactory, PlaceWarbase, PlacePlayerSpawn, Erase }` + `apply_tool`, `update_hover_preview` `[M]`
+- [x] **11.7** Terrain-кисть: LMB — применить `brush_cell_type` к клетке; Open/Rock/Pit/Sand; `RebuildTerrainCell` observer `[M]`
+- [x] **11.8** Структуры: placement через клик; gizmos-превью в `draw_editor_structures` (фабрики/варбейсы/spawn); валидация — ячейка Open `[M]`
+- [x] **11.9** `editor/ui.rs` — `draw_editor_toolbox` (панель слева): инструмент, brush size, тип клетки, тип фабрики, команда `[L]`
+- [x] **11.10** `draw_editor_map_props` (панель справа): имя, описание, размер карты, счётчики фабрик/варбейсов/клеток `[M]`
 - [ ] **11.11** Undo/Redo: стек `EditorAction` (CellChanged, StructurePlaced, StructureRemoved), Ctrl+Z / Ctrl+Shift+Z `[L]`
-- [ ] **11.12** Сохранение: кнопка «Сохранить» → сериализация `MapData` через `ron::ser::to_string_pretty` в `data/maps/{name}.ron` + обновление `data/scenarios/{name}.ron` `[M]`
-- [ ] **11.13** Загрузка: кнопка «Открыть» → список файлов из `data/maps/`, выбор → десериализация → обновление `EditorState` и сцены `[M]`
-- [ ] **11.14** «Новая карта» — диалог размера, заполнение Open-клетками, сброс структур `[S]`
-- [ ] **11.15** Валидация перед сохранением: минимум 1 player warbase, 1 enemy warbase, валидный player_spawn; ошибки в egui-диалоге `[M]`
-- [ ] **11.16** Тестовый запуск: кнопка «Play» → временная запись в `saves/editor_playtest.ron` (scenario definition) → `AppState::Playing` → ESC возвращает в редактор `[M]`
-- [ ] **11.17** Визуальный grid-оверлей в режиме редактора (gizmos, тоньше чем в debug) + координаты клетки под курсором в статус-баре `[S]`
-- [ ] **11.18** Dirty-флаг + диалог «Сохранить изменения?» при выходе в меню `[S]`
+- [x] **11.12** Сохранение: кнопка «Сохранить» → `ron::ser::to_string_pretty` → `data/maps/{name}.ron` + `data/scenarios/{name}.ron` `[M]`
+- [x] **11.13** Загрузка: список файлов из `data/maps/`, выбор → десериализация → обновление `EditorState` и сцены `[M]`
+- [x] **11.14** «Новая карта» — заполнение Open-клетками, сброс структур `[S]`
+- [x] **11.15** Валидация перед сохранением: минимум 1 player warbase, 1 enemy warbase, валидный player_spawn; ошибки в egui-диалоге `[M]`
+- [ ] **11.16** Тестовый запуск: кнопка «Play» → временная запись → `AppState::Playing` → ESC возвращает в редактор `[M]`
+- [x] **11.17** `draw_editor_grid`: gizmos grid-оверлей (alpha=0.08) + координаты клетки в статус-баре `[S]`
+- [🔶] **11.18** Dirty-флаг ✅ реализован; диалог «Сохранить изменения?» при выходе — TODO `[S]`
 - [ ] **11.19** Локализация UI редактора: ключи в `assets/locales/en.ron` и `ru.ron` `[S]`
+
+**Исправления регрессии (2026-04-11):**
+- [x] Egui-панели редактора пропадали → архитектурное решение: единственная камера + маркер
+- [x] Игровые системы (AI, economy, movement и др.) работали в редакторе → добавлены `run_if(in_state(Playing))` во все 10 плагинов
+- [x] `follow_target` перехватывал WASD → добавлен guard `Playing.or(Paused)` в `PostUpdate`
+- [x] `zoom_camera`/`rotate_camera` дублировали ввод → `not(in_state(Editor))`
+- [x] `GameWorldEntity` добавлен в `spawn_robot` → роботы скрыты в редакторе
 
 **Критерии проверки:**
 - Можно создать карту 64×64 с нуля, расставить 2 варбейса + 6 фабрик, спавн игрока, сохранить
@@ -569,7 +581,7 @@ Bevy Events для межсистемного общения:
 |--------|------|------------|
 | bevy 0.18 | 0 | Движок |
 | serde + ron | 0 | Конфиги и сериализация |
-| bevy_egui 0.32 | 0 | Debug overlay, позже Builder UI |
+| bevy_egui 0.39.1 | 0 | Debug overlay, Builder UI, редактор (привязан к первой камере) |
 | bevy_common_assets 0.15 | 1 | RON как Bevy-ассеты |
 | bevy_picking 0.20 | 4 | Выбор роботов/структур raycast |
 | bevy_rapier3d 0.28 | 5 (опц.) | Физика ракет, коллизии |
