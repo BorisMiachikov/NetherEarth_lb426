@@ -1,17 +1,28 @@
 use bevy::prelude::*;
 
-use crate::{camera::systems::IsometricCamera, map::grid::MapGrid};
+use crate::{
+    camera::systems::{CameraTarget, IsometricCamera},
+    map::grid::MapGrid,
+    robot::components::Chassis,
+};
 
-use super::components::{PlayerScout, ScoutMoveIntent, ScoutMovement};
+use super::components::{ManualControl, PlayerScout, ScoutMoveIntent, ScoutMovement};
 
 /// Перемещает скаута согласно ScoutMoveIntent, зажимает по границам карты и высоте.
 /// Направление движения WASD вычисляется относительно текущего yaw камеры.
+/// Приостанавливается, когда активно ручное управление роботом.
 pub fn move_scout(
     time: Res<Time>,
     _map: Res<MapGrid>,
     camera: Query<&IsometricCamera>,
     mut query: Query<(&mut Transform, &mut ScoutMovement, &ScoutMoveIntent), With<PlayerScout>>,
+    manual_active: Query<(), With<ManualControl>>,
 ) {
+    // Пока робот под ручным управлением — скаут стоит
+    if !manual_active.is_empty() {
+        return;
+    }
+
     let Ok((mut transform, mut movement, intent)) = query.single_mut() else {
         return;
     };
@@ -39,6 +50,55 @@ pub fn move_scout(
     transform.translation.y = movement.altitude;
 
     // Границы и коллизия со структурами обрабатываются в map::collision::scout_collision
+}
+
+/// Двигает робота в режиме ручного управления (ManualControl) через WASD.
+/// Движение относительно yaw камеры, без pathfinding.
+pub fn move_manual_control_robot(
+    time: Res<Time>,
+    keys: Res<ButtonInput<KeyCode>>,
+    camera: Query<&IsometricCamera>,
+    mut manual_robots: Query<(&mut Transform, &Chassis), With<ManualControl>>,
+) {
+    let Ok((mut transform, chassis)) = manual_robots.single_mut() else {
+        return;
+    };
+
+    let dt = time.delta_secs();
+    let speed = chassis.speed;
+
+    let yaw = camera
+        .single()
+        .map(|c| c.yaw.to_radians())
+        .unwrap_or(std::f32::consts::FRAC_PI_4);
+    let (sin_y, cos_y) = yaw.sin_cos();
+
+    let mut h = Vec2::ZERO;
+    if keys.pressed(KeyCode::KeyW) { h.y -= 1.0; }
+    if keys.pressed(KeyCode::KeyS) { h.y += 1.0; }
+    if keys.pressed(KeyCode::KeyA) { h.x -= 1.0; }
+    if keys.pressed(KeyCode::KeyD) { h.x += 1.0; }
+    if h != Vec2::ZERO { h = h.normalize(); }
+
+    let world_x = h.y * sin_y + h.x * cos_y;
+    let world_z = h.y * cos_y - h.x * sin_y;
+
+    transform.translation.x += world_x * speed * dt;
+    transform.translation.z += world_z * speed * dt;
+}
+
+/// Следит: если все роботы с ManualControl уничтожены — возвращает CameraTarget скауту.
+pub fn sync_manual_control_camera(
+    manual_query: Query<(), With<ManualControl>>,
+    scout_query: Query<Entity, With<PlayerScout>>,
+    scout_cam: Query<(), (With<CameraTarget>, With<PlayerScout>)>,
+    mut commands: Commands,
+) {
+    if manual_query.is_empty() && scout_cam.is_empty() {
+        if let Ok(scout) = scout_query.single() {
+            commands.entity(scout).try_insert(CameraTarget);
+        }
+    }
 }
 
 /// Спавн скаута (цветной куб-заглушка).

@@ -13,11 +13,11 @@ use input::read_scout_input;
 use selection::{
     draw_selection_indicators, handle_selection_groups, on_robot_click, SelectionState,
 };
-use systems::{move_scout, spawn_scout};
+use systems::{move_manual_control_robot, move_scout, spawn_scout, sync_manual_control_camera};
 
 use crate::app::state::AppState;
 
-pub use components::{PlayerScout, ScoutMoveIntent, ScoutMovement};
+pub use components::{ManualControl, PlayerScout, ScoutMoveIntent, ScoutMovement};
 pub use selection::Selected;
 
 pub struct PlayerPlugin;
@@ -41,8 +41,11 @@ impl Plugin for PlayerPlugin {
             )
             .add_systems(
                 Update,
-                move_scout
-                    .after(rotate_camera)
+                (
+                    move_scout.after(rotate_camera),
+                    move_manual_control_robot.after(rotate_camera),
+                    sync_manual_control_camera,
+                )
                     .run_if(in_state(AppState::Playing)),
             )
             .add_systems(

@@ -2,13 +2,16 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
 use crate::{
-    camera::systems::IsometricCamera,
+    camera::systems::{CameraTarget, IsometricCamera},
     command::command::RobotCommand,
     core::{Health, Team},
     robot::components::{Chassis, ChassisType, Nuclear, RobotMarker, WeaponSlots},
 };
 
-use super::selection::{Selected, SelectionState};
+use super::{
+    components::{ManualControl, PlayerScout},
+    selection::{Selected, SelectionState},
+};
 
 /// Ресурс: состояние UI команд.
 #[derive(Resource, Default)]
@@ -68,6 +71,7 @@ struct SingleInfo {
     hp_max: f32,
     weapons: usize,
     has_nuclear: bool,
+    is_manual: bool,
     cmd: &'static str,
     pos: Vec3,
 }
@@ -97,10 +101,13 @@ pub fn robot_info_panel(
             &WeaponSlots,
             &Team,
             Option<&Nuclear>,
+            Option<&ManualControl>,
         ),
         With<Selected>,
     >,
     selected_entities: Query<Entity, With<Selected>>,
+    manual_query: Query<Entity, With<ManualControl>>,
+    scout_query: Query<Entity, With<PlayerScout>>,
     cmd_ui: Res<CommandUiState>,
     mut commands: Commands,
 ) -> Result {
@@ -116,13 +123,14 @@ pub fn robot_info_panel(
     let multi: Option<MultiInfo>;
 
     if count == 1 {
-        single = robots.single().ok().map(|(cmd, tf, hp, chassis, weapons, team, nuc)| SingleInfo {
+        single = robots.single().ok().map(|(cmd, tf, hp, chassis, weapons, team, nuc, manual)| SingleInfo {
             chassis: chassis.chassis_type,
             team: *team,
             hp: hp.current,
             hp_max: hp.max,
             weapons: weapons.count(),
             has_nuclear: nuc.is_some(),
+            is_manual: manual.is_some(),
             cmd: cmd_label(&cmd),
             pos: tf.translation,
         });
@@ -141,7 +149,7 @@ pub fn robot_info_panel(
         ];
         let mut cmd_counts = [0usize; 7];
 
-        for (cmd, _, hp, chassis, _, _, nuc) in robots.iter() {
+        for (cmd, _, hp, chassis, _, _, nuc, _) in robots.iter() {
             total_hp_pct += hp.current / hp.max.max(1.0);
             if nuc.is_some() { has_nuclear = true; }
             match chassis.chassis_type {
@@ -176,6 +184,7 @@ pub fn robot_info_panel(
 
     let mut new_cmd: Option<RobotCommand> = None;
     let mut deselect = false;
+    let mut toggle_manual: Option<Entity> = None;
 
     // Есть ли ядерный заряд среди выбранных
     let any_nuclear = single.as_ref().map_or(false, |s| s.has_nuclear)
@@ -227,6 +236,13 @@ pub fn robot_info_panel(
                         .small()
                         .color(egui::Color32::GRAY),
                 );
+
+                if s.is_manual {
+                    ui.colored_label(
+                        egui::Color32::from_rgb(0, 220, 255),
+                        "⊕ РУЧНОЕ УПРАВЛЕНИЕ",
+                    );
+                }
 
                 ui.separator();
                 ui.label(
@@ -312,11 +328,37 @@ pub fn robot_info_panel(
                 }
             }
 
-            ui.label(
-                egui::RichText::new("ПКМ = Двигаться  |  P+ПКМ = Патруль")
-                    .small()
-                    .color(egui::Color32::DARK_GRAY),
-            );
+            // Кнопка ручного управления — только для одного выбранного робота
+            if let Some(ref s) = single {
+                let label = if s.is_manual {
+                    "✋ Выйти из управления"
+                } else {
+                    "✋ Ручное управление"
+                };
+                if ui
+                    .add_sized([ui.available_width(), 22.0], egui::Button::new(label))
+                    .clicked()
+                {
+                    if let Some(&entity) = selection.selected.first() {
+                        toggle_manual = Some(entity);
+                    }
+                }
+            }
+
+            let any_manual = single.as_ref().map_or(false, |s| s.is_manual);
+            if any_manual {
+                ui.label(
+                    egui::RichText::new("WASD = движение  |  Ctrl+LMB = выход")
+                        .small()
+                        .color(egui::Color32::from_rgb(0, 180, 220)),
+                );
+            } else {
+                ui.label(
+                    egui::RichText::new("ПКМ = Двигаться  |  P+ПКМ = Патруль  |  Ctrl+LMB = ручное")
+                        .small()
+                        .color(egui::Color32::DARK_GRAY),
+                );
+            }
 
             if cmd_ui.show_patrol_hint {
                 ui.colored_label(
@@ -341,18 +383,49 @@ pub fn robot_info_panel(
             }
         });
 
+    // Переключить ручное управление (кнопка в панели)
+    if let Some(target) = toggle_manual {
+        let already_manual = manual_query.get(target).is_ok();
+        // Снять ManualControl со всех роботов и вернуть камеру скауту
+        for e in &manual_query {
+            commands.entity(e).remove::<ManualControl>();
+        }
+        if let Ok(scout) = scout_query.single() {
+            commands.entity(scout).try_insert(CameraTarget);
+        }
+        if !already_manual {
+            // Активировать ручное управление
+            commands
+                .entity(target)
+                .insert(ManualControl)
+                .insert(RobotCommand::Idle);
+            if let Ok(scout) = scout_query.single() {
+                commands.entity(scout).remove::<CameraTarget>();
+            }
+            commands.entity(target).insert(CameraTarget);
+        }
+        return Ok(());
+    }
+
     // Снять выбор (кнопка в панели)
     if deselect {
         for e in &selected_entities {
             commands.entity(e).remove::<Selected>();
         }
         selection.selected.clear();
+        // Также отключить ручное управление и вернуть камеру скауту
+        for e in &manual_query {
+            commands.entity(e).remove::<ManualControl>();
+        }
+        if let Ok(scout) = scout_query.single() {
+            commands.entity(scout).try_insert(CameraTarget);
+        }
         return Ok(());
     }
 
     // Применяем команду ко всем выбранным роботам
     if let Some(cmd) = new_cmd {
-        for (mut robot_cmd, tf, ..) in &mut robots {
+        for (mut robot_cmd, tf, _, _, _, _, _, _) in &mut robots {
             *robot_cmd = if matches!(cmd, RobotCommand::Defend(_)) {
                 RobotCommand::Defend(tf.translation)
             } else {
@@ -384,12 +457,23 @@ fn team_color_egui(team: Team) -> egui::Color32 {
     }
 }
 
-/// Рисует gizmo-линии к целям выбранных роботов + индикаторы Patrol.
+/// Рисует gizmo-линии к целям выбранных роботов + индикаторы Patrol + ручного управления.
 pub fn draw_command_indicators(
     mut gizmos: Gizmos,
     robots: Query<(&Transform, &RobotCommand), With<Selected>>,
+    manual_robots: Query<&Transform, With<ManualControl>>,
     cmd_ui: Res<CommandUiState>,
+    time: Res<Time>,
 ) {
+    // Пульсирующий голубой круг вокруг робота в ручном управлении
+    for tf in &manual_robots {
+        let pulse = (time.elapsed_secs() * 4.0).sin() * 0.12 + 0.88;
+        let pos = tf.translation.with_y(0.06);
+        let iso = Isometry3d::new(pos, Quat::from_rotation_x(std::f32::consts::FRAC_PI_2));
+        gizmos.circle(iso, 1.0 * pulse, Color::srgb(0.0, 0.9, 1.0));
+        gizmos.circle(iso, 1.25 * pulse, Color::srgba(0.0, 0.7, 1.0, 0.4));
+    }
+
     for (tf, cmd) in &robots {
         match cmd {
             RobotCommand::MoveTo(target) => {

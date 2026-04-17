@@ -76,6 +76,33 @@ pub fn open_builder_input(
     }
 }
 
+/// ЛКМ по своей варбейзе → открыть Builder UI (если скаут в радиусе).
+pub fn on_warbase_click(
+    click: On<Pointer<Click>>,
+    warbases: Query<(&Transform, &Team), With<Warbase>>,
+    scout: Query<&Transform, With<PlayerScout>>,
+    mut state: ResMut<BuilderUiState>,
+) {
+    if click.button != PointerButton::Primary {
+        return;
+    }
+    let entity = click.entity;
+    let Ok((tf, team)) = warbases.get(entity) else {
+        return;
+    };
+    if *team != Team::Player {
+        return;
+    }
+    let Ok(scout_tf) = scout.single() else {
+        return;
+    };
+    if tf.translation.xz().distance(scout_tf.translation.xz()) >= BUILDER_RANGE {
+        return;
+    }
+    state.open = true;
+    state.warbase_entity = Some(entity);
+}
+
 /// Стоимость blueprint по типам ресурсов.
 fn blueprint_typed_costs(
     bp: &RobotBlueprint,

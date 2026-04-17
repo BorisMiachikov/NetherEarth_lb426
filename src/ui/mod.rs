@@ -8,7 +8,7 @@ pub mod minimap;
 use bevy::prelude::*;
 use bevy_egui::EguiPrimaryContextPass;
 
-use builder_ui::{draw_builder_ui, open_builder_input, BuilderUiState};
+use builder_ui::{draw_builder_ui, on_warbase_click, open_builder_input, BuilderUiState};
 use gameover::draw_gameover_screen;
 use help_overlay::{draw_help_overlay, toggle_help_overlay, HelpOverlayState};
 use hud::draw_resource_hud;
@@ -32,6 +32,7 @@ impl Plugin for UiPlugin {
         app.insert_resource(ScenarioList::load_from_dir())
             .init_resource::<BuilderUiState>()
             .init_resource::<HelpOverlayState>()
+            .add_observer(on_warbase_click)
             // Начальный переход: Loading → MainMenu
             .add_systems(OnEnter(AppState::Loading), init_to_main_menu)
             // Системы без egui — в Update

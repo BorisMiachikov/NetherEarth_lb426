@@ -1,6 +1,12 @@
 use bevy::prelude::*;
 
-use crate::robot::components::RobotMarker;
+use crate::{
+    camera::systems::CameraTarget,
+    command::command::RobotCommand,
+    robot::components::RobotMarker,
+};
+
+use super::components::{ManualControl, PlayerScout};
 
 /// Маркер: робот выбран игроком.
 #[derive(Component)]
@@ -16,7 +22,7 @@ pub struct SelectionState {
     pub selected: Vec<Entity>,
 }
 
-/// ЛКМ на меш робота → выбрать (Shift → добавить).
+/// ЛКМ на меш робота → выбрать (Shift → добавить, Ctrl → ручное управление).
 pub fn on_robot_click(
     click: On<Pointer<Click>>,
     robot_query: Query<Entity, With<RobotMarker>>,
@@ -24,12 +30,52 @@ pub fn on_robot_click(
     mut commands: Commands,
     mut selection: ResMut<SelectionState>,
     selected_query: Query<Entity, With<Selected>>,
+    manual_query: Query<Entity, With<ManualControl>>,
+    scout_query: Query<Entity, With<PlayerScout>>,
 ) {
     let entity = click.entity;
     if click.button != PointerButton::Primary {
         return;
     }
     if robot_query.get(entity).is_err() {
+        return;
+    }
+
+    let ctrl = keys.pressed(KeyCode::ControlLeft) || keys.pressed(KeyCode::ControlRight);
+    let shift = keys.pressed(KeyCode::ShiftLeft) || keys.pressed(KeyCode::ShiftRight);
+
+    // Ctrl+LMB → переключение ручного управления
+    if ctrl && !shift {
+        let already_manual = manual_query.get(entity).is_ok();
+
+        // Снять ManualControl со всех роботов и вернуть камеру скауту
+        for e in &manual_query {
+            commands.entity(e).remove::<ManualControl>();
+        }
+        if let Ok(scout) = scout_query.single() {
+            commands.entity(scout).try_insert(CameraTarget);
+        }
+
+        // Сбросить выбор, выбрать кликнутого
+        for e in &selected_query {
+            commands.entity(e).remove::<Selected>();
+        }
+        selection.selected.clear();
+
+        if !already_manual {
+            // Активировать ручное управление
+            commands
+                .entity(entity)
+                .insert(ManualControl)
+                .insert(Selected)
+                .insert(RobotCommand::Idle);
+            selection.selected.push(entity);
+            // Перенести CameraTarget с скаута на робота
+            if let Ok(scout) = scout_query.single() {
+                commands.entity(scout).remove::<CameraTarget>();
+            }
+            commands.entity(entity).insert(CameraTarget);
+        }
         return;
     }
 

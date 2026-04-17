@@ -24,6 +24,11 @@ impl Default for ScoutMovement {
     }
 }
 
+/// Маркер: робот находится под прямым управлением игрока (Ctrl+LMB).
+/// WASD двигает этот робот; скаут стоит; камера следует за роботом.
+#[derive(Component)]
+pub struct ManualControl;
+
 /// Намерение движения, вычисляемое из ввода. Обнуляется каждый кадр.
 #[derive(Component, Default, Debug, Clone)]
 pub struct ScoutMoveIntent {
