@@ -27,7 +27,7 @@ pub struct StructurePlugin;
 
 impl Plugin for StructurePlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, spawn_structures.after(crate::map::spawn_ground))
+        app.add_systems(Startup, spawn_structures_system.after(crate::map::spawn_ground))
             .add_observer(on_structure_captured)
             .add_systems(
                 FixedUpdate,
@@ -81,7 +81,7 @@ fn factory_type(def: &FactoryTypeDef) -> FactoryType {
     }
 }
 
-pub fn spawn_structures(
+pub fn spawn_structures_system(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,

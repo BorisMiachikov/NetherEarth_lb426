@@ -7,14 +7,17 @@ pub mod tools;
 pub mod ui;
 
 use bevy::prelude::*;
+use bevy_egui::egui;
 
 use crate::{
     app::state::AppState,
     camera::systems::IsometricCamera,
     map::{
-        grid::MapGrid,
-        loader::TeamDef,
+        grid::{CellType, MapGrid},
+        loader::{MapSpawnPoints, MapStructures, TeamDef},
     },
+    save::TriggerNewGame,
+    structure::{factory::Factory, spawn_structures_system, warbase::Warbase},
 };
 
 use camera::{free_camera_movement, reset_camera_for_editor, EditorCamera};
@@ -23,6 +26,10 @@ use state::EditorState;
 use terrain::{on_rebuild_terrain_cell, RebuildTerrainCell};
 use tools::{apply_tool, update_hover_preview};
 use ui::{draw_editor_toolbox, draw_editor_map_props};
+
+/// Маркер: игра запущена из редактора (Play-тест). ESC возвращает в редактор.
+#[derive(Resource)]
+pub struct EditorPlaytest;
 
 pub struct EditorPlugin;
 
@@ -60,6 +67,24 @@ impl Plugin for EditorPlugin {
                 bevy_egui::EguiPrimaryContextPass,
                 (draw_editor_toolbox, draw_editor_map_props)
                     .run_if(in_state(AppState::Editor)),
+            )
+            // Спавн структур при входе в Playing из редактора
+            .add_systems(
+                OnEnter(AppState::Playing),
+                spawn_structures_system.run_if(resource_exists::<EditorPlaytest>),
+            )
+            // Play-тест: запуск из редактора
+            .add_systems(
+                Update,
+                (prepare_playtest.run_if(in_state(AppState::Editor)),
+                 playtest_esc_handler.run_if(in_state(AppState::Playing)).run_if(resource_exists::<EditorPlaytest>)),
+            )
+            // Play-тест: оверлей поверх игры
+            .add_systems(
+                bevy_egui::EguiPrimaryContextPass,
+                playtest_overlay
+                    .run_if(in_state(AppState::Playing))
+                    .run_if(resource_exists::<EditorPlaytest>),
             );
     }
 }
@@ -183,3 +208,83 @@ pub struct EditorEntity;
 /// Маркер: игровая сущность (скаут, структуры, роботы), которую нужно скрывать в редакторе.
 #[derive(Component)]
 pub struct GameWorldEntity;
+
+// ---------------------------------------------------------------------------
+// Play-тест
+// ---------------------------------------------------------------------------
+
+/// Готовит мир к тестовому запуску карты из редактора.
+#[allow(clippy::too_many_arguments)]
+fn prepare_playtest(
+    mut editor: ResMut<EditorState>,
+    mut map: ResMut<MapGrid>,
+    mut map_structures: ResMut<MapStructures>,
+    mut spawn_points: ResMut<MapSpawnPoints>,
+    structures_q: Query<Entity, Or<(With<Factory>, With<Warbase>)>>,
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if !std::mem::take(&mut editor.play_test_requested) {
+        return;
+    }
+    if let Some(err) = editor.validate() {
+        editor.show_validation_error = Some(err);
+        return;
+    }
+
+    // Деспавним все структуры игрового мира
+    for entity in &structures_q {
+        commands.entity(entity).despawn();
+    }
+
+    // Очищаем Structure()-ячейки в MapGrid немедленно
+    let (w, h) = (map.width, map.height);
+    for y in 0..h {
+        for x in 0..w {
+            if matches!(map.get(x, y), Some(CellType::Structure(_))) {
+                map.set(x, y, CellType::Open);
+            }
+        }
+    }
+
+    // Обновляем ресурсы карты из состояния редактора
+    spawn_points.player_spawn = editor.player_spawn;
+    map_structures.factories  = editor.factories.clone();
+    map_structures.warbases   = editor.warbases.clone();
+
+    // Сбрасываем игровой мир (роботы, ресурсы, скаут, AI, время)
+    // Цикл сброса структур в on_trigger_new_game не найдёт ничего в MapGrid → безопасно
+    commands.trigger(TriggerNewGame);
+
+    commands.insert_resource(EditorPlaytest);
+    next_state.set(AppState::Playing);
+}
+
+/// Обрабатывает ESC во время Play-теста: возврат в редактор.
+fn playtest_esc_handler(
+    keys: Res<ButtonInput<KeyCode>>,
+    mut commands: Commands,
+    mut next_state: ResMut<NextState<AppState>>,
+) {
+    if keys.just_pressed(KeyCode::Escape) {
+        commands.remove_resource::<EditorPlaytest>();
+        next_state.set(AppState::Editor);
+    }
+}
+
+/// Небольшой оверлей поверх игры во время Play-теста.
+fn playtest_overlay(mut contexts: bevy_egui::EguiContexts) -> Result {
+    let ctx = contexts.ctx_mut()?;
+    egui::Area::new(egui::Id::new("playtest_banner"))
+        .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 8.0))
+        .interactable(false)
+        .show(ctx, |ui| {
+            ui.label(
+                egui::RichText::new("▶ ТЕСТ КАРТЫ  |  ESC — вернуться в редактор")
+                    .color(egui::Color32::YELLOW)
+                    .background_color(egui::Color32::from_black_alpha(200))
+                    .size(14.0),
+            );
+        });
+    Ok(())
+}

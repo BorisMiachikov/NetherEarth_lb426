@@ -114,10 +114,10 @@ pub fn draw_editor_toolbox(
                 let can_undo = !editor.undo_stack.is_empty();
                 let can_redo = !editor.redo_stack.is_empty();
                 if ui.add_enabled(can_undo, egui::Button::new("↩ Отмена")).clicked() {
-                    commands.trigger(super::terrain::RebuildTerrainCell { x: 0, y: 0 }); // заглушка — будет через apply_tool
+                    editor.undo_requested = true;
                 }
                 if ui.add_enabled(can_redo, egui::Button::new("↪ Повтор")).clicked() {
-                    // аналогично
+                    editor.redo_requested = true;
                 }
             });
             ui.add_space(4.0);
@@ -154,6 +154,25 @@ pub fn draw_editor_toolbox(
                         }
                     }
                 }
+            }
+
+            ui.add_space(8.0);
+            ui.separator();
+
+            // --- Тестовый запуск ---
+            let can_play = editor.validate().is_none();
+            if ui
+                .add_enabled(can_play, egui::Button::new("▶ Тест карты").fill(egui::Color32::from_rgb(30, 100, 30)))
+                .clicked()
+            {
+                editor.play_test_requested = true;
+            }
+            if !can_play {
+                ui.label(
+                    egui::RichText::new("Нужен варбейс игрока и врага")
+                        .small()
+                        .color(egui::Color32::DARK_RED),
+                );
             }
 
             ui.add_space(8.0);

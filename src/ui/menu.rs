@@ -103,8 +103,13 @@ pub fn toggle_pause(
     state: Res<State<AppState>>,
     mut next_state: ResMut<NextState<AppState>>,
     mut time: ResMut<Time<Virtual>>,
+    playtest: Option<Res<crate::editor::EditorPlaytest>>,
 ) {
     if !keys.just_pressed(KeyCode::Escape) {
+        return;
+    }
+    // ESC во время Play-теста обрабатывается отдельной системой редактора
+    if playtest.is_some() {
         return;
     }
     match state.get() {

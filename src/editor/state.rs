@@ -128,6 +128,9 @@ pub struct EditorState {
     // --- История ---
     pub undo_stack: Vec<EditorAction>,
     pub redo_stack: Vec<EditorAction>,
+    pub undo_requested: bool,
+    pub redo_requested: bool,
+    pub play_test_requested: bool,
 
     // --- Hover ---
     /// Клетка под курсором (для предпросмотра).
@@ -163,6 +166,9 @@ impl Default for EditorState {
 
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
+            undo_requested: false,
+            redo_requested: false,
+            play_test_requested: false,
 
             hovered_cell: None,
 

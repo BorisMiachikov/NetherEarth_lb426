@@ -21,16 +21,27 @@ pub fn apply_tool(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
+    // Redo: Ctrl+Shift+Z — проверяем РАНЬШЕ Undo, иначе перехватывается
+    if keys.just_pressed(KeyCode::KeyZ)
+        && keys.pressed(KeyCode::ControlLeft)
+        && keys.pressed(KeyCode::ShiftLeft)
+    {
+        redo(&mut editor, &mut grid, &mut commands, &mut meshes, &mut materials);
+        return;
+    }
     // Undo: Ctrl+Z
     if keys.just_pressed(KeyCode::KeyZ) && keys.pressed(KeyCode::ControlLeft) {
         undo(&mut editor, &mut grid, &mut commands, &mut meshes, &mut materials);
         return;
     }
-    // Redo: Ctrl+Shift+Z
-    if keys.just_pressed(KeyCode::KeyZ)
-        && keys.pressed(KeyCode::ControlLeft)
-        && keys.pressed(KeyCode::ShiftLeft)
-    {
+    // Запросы от кнопок UI
+    let do_undo = std::mem::take(&mut editor.undo_requested);
+    let do_redo = std::mem::take(&mut editor.redo_requested);
+    if do_undo {
+        undo(&mut editor, &mut grid, &mut commands, &mut meshes, &mut materials);
+        return;
+    }
+    if do_redo {
         redo(&mut editor, &mut grid, &mut commands, &mut meshes, &mut materials);
         return;
     }
