@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, ops::{Deref, DerefMut}};
 
 use bevy::prelude::*;
 
@@ -9,6 +9,18 @@ pub use crate::core::events::ResourceType;
 #[derive(Resource, Debug, Clone)]
 pub struct PlayerResources {
     pub stocks: HashMap<ResourceType, i32>,
+}
+
+/// Ресурсы ИИ — зеркальный аналог PlayerResources.
+#[derive(Resource, Debug, Clone)]
+pub struct EnemyResources(pub PlayerResources);
+
+impl Deref for EnemyResources {
+    type Target = PlayerResources;
+    fn deref(&self) -> &PlayerResources { &self.0 }
+}
+impl DerefMut for EnemyResources {
+    fn deref_mut(&mut self) -> &mut PlayerResources { &mut self.0 }
 }
 
 impl PlayerResources {
@@ -40,6 +52,42 @@ impl PlayerResources {
         } else {
             false
         }
+    }
+
+    /// Проверяет, хватает ли ресурсов на постройку по BuildCost.items.
+    pub fn can_afford_cost(&self, cost: &crate::robot::builder::BuildCost) -> bool {
+        for (name, amount) in &cost.items {
+            if *amount == 0 { continue; }
+            if let Some(rt) = resource_type_from_name(name) {
+                if self.get(rt) < *amount as i32 {
+                    return false;
+                }
+            }
+        }
+        true
+    }
+
+    /// Списывает ресурсы по BuildCost.items. Вызывать только после can_afford_cost.
+    pub fn spend_cost(&mut self, cost: &crate::robot::builder::BuildCost) {
+        for (name, amount) in &cost.items {
+            if *amount == 0 { continue; }
+            if let Some(rt) = resource_type_from_name(name) {
+                self.spend(rt, *amount as i32);
+            }
+        }
+    }
+}
+
+fn resource_type_from_name(name: &str) -> Option<ResourceType> {
+    match name {
+        "Chassis"     => Some(ResourceType::Chassis),
+        "Cannon"      => Some(ResourceType::Cannon),
+        "Missile"     => Some(ResourceType::Missile),
+        "Phasers"     => Some(ResourceType::Phasers),
+        "Electronics" => Some(ResourceType::Electronics),
+        "Nuclear"     => Some(ResourceType::Nuclear),
+        "General"     => Some(ResourceType::General),
+        _ => None,
     }
 }
 

@@ -7,7 +7,7 @@ use crate::{
     structure::{capture::Capturable, factory::Factory, warbase::Warbase, FactType},
 };
 
-use super::resource::{PlayerResources, ResourceType};
+use super::resource::{EnemyResources, PlayerResources, ResourceType};
 
 /// Последний день, когда производилось накопление ресурсов.
 #[derive(Resource, Default)]
@@ -41,6 +41,7 @@ pub fn tick_production(
     factories: Query<(&FactType, &Team), (With<Factory>, With<Capturable>)>,
     warbases: Query<&Team, With<Warbase>>,
     mut player_res: ResMut<PlayerResources>,
+    mut enemy_res: ResMut<EnemyResources>,
     mut commands: Commands,
 ) {
     if game_time.game_day <= last_day.0 {
@@ -76,6 +77,26 @@ pub fn tick_production(
             delta,
             new_total,
         });
+    }
+
+    // ── Ресурсы ИИ (та же экономика) ──────────────────────────────────────
+    let mut enemy_deltas: HashMap<ResourceType, i32> = HashMap::new();
+
+    for team in &warbases {
+        if *team == Team::Enemy {
+            *enemy_deltas.entry(ResourceType::General).or_insert(0) += WARBASE_GENERAL_PER_DAY;
+        }
+    }
+    for (factory_type, team) in &factories {
+        if *team != Team::Enemy {
+            continue;
+        }
+        let rt = factory_type_to_resource(*factory_type);
+        *enemy_deltas.entry(rt).or_insert(0) += FACTORY_SPECIFIC_PER_DAY;
+        *enemy_deltas.entry(ResourceType::General).or_insert(0) += FACTORY_GENERAL_BONUS;
+    }
+    for (rt, delta) in enemy_deltas {
+        enemy_res.add(rt, delta);
     }
 }
 

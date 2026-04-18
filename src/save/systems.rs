@@ -5,7 +5,7 @@ use crate::{
     command::command::RobotCommand,
     core::{Health, Team},
     core::time::GameTime,
-    economy::resource::{PlayerResources, ResourceType},
+    economy::resource::{EnemyResources, PlayerResources, ResourceType},
     map::{
         grid::MapGrid,
         loader::{MapSpawnPoints, MapStructures, TeamDef},
@@ -434,6 +434,7 @@ pub fn on_trigger_new_game(
         Or<(With<Factory>, With<Warbase>)>,
     >,
     mut resources: ResMut<PlayerResources>,
+    mut enemy_resources: ResMut<EnemyResources>,
     mut game_time: ResMut<GameTime>,
     mut ai: ResMut<AICommander>,
     mut game_result: ResMut<GameResult>,
@@ -486,8 +487,9 @@ pub fn on_trigger_new_game(
         }
     }
 
-    // 3. Ресурсы игрока
+    // 3. Ресурсы игрока и ИИ
     *resources = PlayerResources::with_starting_values();
+    *enemy_resources = EnemyResources(PlayerResources::with_starting_values());
 
     // 4. Игровое время
     *game_time = GameTime::default();

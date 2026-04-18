@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use crate::{
     command::command::RobotCommand,
     core::Team,
+    economy::EnemyResources,
     movement::{exploration_target, velocity::MovementTarget},
     robot::{
         components::{Nuclear, RobotMarker, VisionRange},
@@ -71,6 +72,7 @@ pub fn ai_build_robots(
     registry: Res<ModuleRegistry>,
     factories: Query<&Team, With<crate::structure::factory::Factory>>,
     result: Res<GameResult>,
+    mut enemy_res: ResMut<EnemyResources>,
 ) {
     if result.outcome.is_some() {
         return;
@@ -102,6 +104,11 @@ pub fn ai_build_robots(
     }
     let build_cost = blueprint.cost(&registry);
 
+    // Проверяем ресурсы ИИ — та же экономика, что у игрока
+    if !enemy_res.can_afford_cost(&build_cost) {
+        return;
+    }
+
     // Найти вражеский варбейс и добавить в очередь
     for (mut queue, _, team) in &mut warbases {
         if *team != Team::Enemy {
@@ -111,6 +118,7 @@ pub fn ai_build_robots(
         if queue.queue.len() >= 3 {
             continue;
         }
+        enemy_res.spend_cost(&build_cost);
         queue.enqueue(blueprint.clone(), build_cost.build_time);
         ai.robots_built += 1;
         break;
