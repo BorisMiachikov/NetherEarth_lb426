@@ -65,7 +65,7 @@ impl Plugin for EditorPlugin {
             // UI (EguiPrimaryContextPass)
             .add_systems(
                 bevy_egui::EguiPrimaryContextPass,
-                (draw_editor_toolbox, draw_editor_map_props)
+                (draw_editor_toolbox, draw_editor_map_props, draw_exit_dialog)
                     .run_if(in_state(AppState::Editor)),
             )
             // Спавн структур при входе в Playing из редактора
@@ -183,15 +183,21 @@ fn on_exit_editor(
 fn editor_exit_to_menu(
     keys: Res<ButtonInput<KeyCode>>,
     mut next_state: ResMut<NextState<AppState>>,
-    state: ResMut<EditorState>,
+    mut state: ResMut<EditorState>,
 ) {
     if !keys.just_pressed(KeyCode::Escape) {
         return;
     }
-    if state.dirty {
-        // TODO: диалог подтверждения (задача 11.18)
+    // Если диалог выхода открыт — ESC закрывает его (не выходит)
+    if state.show_exit_dialog {
+        state.show_exit_dialog = false;
+        return;
     }
-    next_state.set(AppState::MainMenu);
+    if state.dirty {
+        state.show_exit_dialog = true;
+    } else {
+        next_state.set(AppState::MainMenu);
+    }
 }
 
 /// Убираем сущности редактора (EditorEntity) при выходе из состояния.
@@ -208,6 +214,71 @@ pub struct EditorEntity;
 /// Маркер: игровая сущность (скаут, структуры, роботы), которую нужно скрывать в редакторе.
 #[derive(Component)]
 pub struct GameWorldEntity;
+
+// ---------------------------------------------------------------------------
+// Диалог подтверждения выхода
+// ---------------------------------------------------------------------------
+
+fn draw_exit_dialog(
+    mut contexts: bevy_egui::EguiContexts,
+    mut editor: ResMut<EditorState>,
+    mut next_state: ResMut<NextState<AppState>>,
+    grid: Res<MapGrid>,
+) -> Result {
+    if !editor.show_exit_dialog {
+        return Ok(());
+    }
+    let ctx = contexts.ctx_mut()?;
+
+    // Затемнение фона
+    egui::Area::new(egui::Id::new("exit_dialog_bg"))
+        .fixed_pos(egui::Pos2::ZERO)
+        .order(egui::Order::Background)
+        .interactable(false)
+        .show(ctx, |ui| {
+            let screen = ctx.screen_rect();
+            ui.painter().rect_filled(screen, 0.0, egui::Color32::from_black_alpha(160));
+        });
+
+    egui::Window::new("Несохранённые изменения")
+        .collapsible(false)
+        .resizable(false)
+        .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
+        .show(ctx, |ui| {
+            ui.label("На карте есть несохранённые изменения.");
+            ui.label("Сохранить перед выходом?");
+            ui.add_space(12.0);
+            ui.horizontal(|ui| {
+                if ui.button("💾 Сохранить и выйти").clicked() {
+                    if let Some(err) = editor.validate() {
+                        editor.show_validation_error = Some(err);
+                        editor.show_exit_dialog = false;
+                    } else {
+                        match crate::editor::save::save_map(&editor, &grid) {
+                            Ok(_) => {
+                                editor.dirty = false;
+                                editor.show_exit_dialog = false;
+                                next_state.set(AppState::MainMenu);
+                            }
+                            Err(e) => {
+                                editor.show_validation_error = Some(e);
+                                editor.show_exit_dialog = false;
+                            }
+                        }
+                    }
+                }
+                if ui.button("🚪 Выйти без сохранения").clicked() {
+                    editor.dirty = false;
+                    editor.show_exit_dialog = false;
+                    next_state.set(AppState::MainMenu);
+                }
+                if ui.button("✕ Отмена").clicked() {
+                    editor.show_exit_dialog = false;
+                }
+            });
+        });
+    Ok(())
+}
 
 // ---------------------------------------------------------------------------
 // Play-тест

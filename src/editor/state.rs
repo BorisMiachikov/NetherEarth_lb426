@@ -131,6 +131,7 @@ pub struct EditorState {
     pub undo_requested: bool,
     pub redo_requested: bool,
     pub play_test_requested: bool,
+    pub show_exit_dialog: bool,
 
     // --- Hover ---
     /// Клетка под курсором (для предпросмотра).
@@ -169,6 +170,7 @@ impl Default for EditorState {
             undo_requested: false,
             redo_requested: false,
             play_test_requested: false,
+            show_exit_dialog: false,
 
             hovered_cell: None,
 
