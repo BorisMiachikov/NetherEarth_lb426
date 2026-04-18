@@ -224,6 +224,7 @@ fn draw_exit_dialog(
     mut editor: ResMut<EditorState>,
     mut next_state: ResMut<NextState<AppState>>,
     grid: Res<MapGrid>,
+    loc: Res<crate::localization::Localization>,
 ) -> Result {
     if !editor.show_exit_dialog {
         return Ok(());
@@ -240,16 +241,16 @@ fn draw_exit_dialog(
             ui.painter().rect_filled(screen, 0.0, egui::Color32::from_black_alpha(160));
         });
 
-    egui::Window::new("Несохранённые изменения")
+    egui::Window::new(loc.t("editor.dialog.exit_title"))
         .collapsible(false)
         .resizable(false)
         .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
         .show(ctx, |ui| {
-            ui.label("На карте есть несохранённые изменения.");
-            ui.label("Сохранить перед выходом?");
+            ui.label(loc.t("editor.dialog.exit_msg1"));
+            ui.label(loc.t("editor.dialog.exit_msg2"));
             ui.add_space(12.0);
             ui.horizontal(|ui| {
-                if ui.button("💾 Сохранить и выйти").clicked() {
+                if ui.button(loc.t("editor.dialog.save_exit")).clicked() {
                     if let Some(err) = editor.validate() {
                         editor.show_validation_error = Some(err);
                         editor.show_exit_dialog = false;
@@ -267,12 +268,12 @@ fn draw_exit_dialog(
                         }
                     }
                 }
-                if ui.button("🚪 Выйти без сохранения").clicked() {
+                if ui.button(loc.t("editor.dialog.discard")).clicked() {
                     editor.dirty = false;
                     editor.show_exit_dialog = false;
                     next_state.set(AppState::MainMenu);
                 }
-                if ui.button("✕ Отмена").clicked() {
+                if ui.button(loc.t("editor.dialog.cancel")).clicked() {
                     editor.show_exit_dialog = false;
                 }
             });
@@ -344,14 +345,17 @@ fn playtest_esc_handler(
 }
 
 /// Небольшой оверлей поверх игры во время Play-теста.
-fn playtest_overlay(mut contexts: bevy_egui::EguiContexts) -> Result {
+fn playtest_overlay(
+    mut contexts: bevy_egui::EguiContexts,
+    loc: Res<crate::localization::Localization>,
+) -> Result {
     let ctx = contexts.ctx_mut()?;
     egui::Area::new(egui::Id::new("playtest_banner"))
         .anchor(egui::Align2::CENTER_TOP, egui::vec2(0.0, 8.0))
         .interactable(false)
         .show(ctx, |ui| {
             ui.label(
-                egui::RichText::new("▶ ТЕСТ КАРТЫ  |  ESC — вернуться в редактор")
+                egui::RichText::new(loc.t("editor.playtest.banner"))
                     .color(egui::Color32::YELLOW)
                     .background_color(egui::Color32::from_black_alpha(200))
                     .size(14.0),

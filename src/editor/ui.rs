@@ -3,6 +3,7 @@ use bevy_egui::{egui, EguiContexts};
 
 use crate::{
     app::state::AppState,
+    localization::Localization,
     map::{grid::MapGrid, loader::{CellTypeDef, FactoryTypeDef, TeamDef}},
 };
 
@@ -18,6 +19,7 @@ pub fn draw_editor_toolbox(
     mut editor: ResMut<EditorState>,
     mut grid: ResMut<MapGrid>,
     mut commands: Commands,
+    loc: Res<Localization>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
@@ -25,17 +27,17 @@ pub fn draw_editor_toolbox(
         .default_width(180.0)
         .resizable(false)
         .show(ctx, |ui| {
-            ui.heading("Редактор карты");
+            ui.heading(loc.t("editor.title"));
             ui.separator();
 
             // --- Инструменты ---
-            ui.label(egui::RichText::new("Инструмент").small().color(egui::Color32::GRAY));
+            ui.label(egui::RichText::new(loc.t("editor.section.tool")).small().color(egui::Color32::GRAY));
             for (tool, label) in [
-                (EditorTool::TerrainBrush,    "🖌 Рельеф"),
-                (EditorTool::PlaceFactory,    "🏭 Фабрика"),
-                (EditorTool::PlaceWarbase,    "🏰 Варбейс"),
-                (EditorTool::PlacePlayerSpawn,"🚀 Спавн"),
-                (EditorTool::Erase,           "✕ Стереть"),
+                (EditorTool::TerrainBrush,    loc.t("editor.tool.terrain")),
+                (EditorTool::PlaceFactory,    loc.t("editor.tool.factory")),
+                (EditorTool::PlaceWarbase,    loc.t("editor.tool.warbase")),
+                (EditorTool::PlacePlayerSpawn,loc.t("editor.tool.spawn")),
+                (EditorTool::Erase,           loc.t("editor.tool.erase")),
             ] {
                 ui.radio_value(&mut editor.current_tool, tool, label);
             }
@@ -44,12 +46,12 @@ pub fn draw_editor_toolbox(
             // --- Настройки кисти рельефа ---
             if editor.current_tool == EditorTool::TerrainBrush {
                 ui.separator();
-                ui.label(egui::RichText::new("Тип клетки").small().color(egui::Color32::GRAY));
+                ui.label(egui::RichText::new(loc.t("editor.section.cell_type")).small().color(egui::Color32::GRAY));
                 for (ct, label) in [
-                    (CellTypeDef::Rock,    "⬛ Скала"),
-                    (CellTypeDef::Pit,     "🕳 Яма"),
-                    (CellTypeDef::Sand,    "🟨 Песок"),
-                    (CellTypeDef::Blocked, "🚫 Заблокировано"),
+                    (CellTypeDef::Rock,    loc.t("editor.cell.rock")),
+                    (CellTypeDef::Pit,     loc.t("editor.cell.pit")),
+                    (CellTypeDef::Sand,    loc.t("editor.cell.sand")),
+                    (CellTypeDef::Blocked, loc.t("editor.cell.blocked")),
                 ] {
                     let selected = std::mem::discriminant(&editor.brush_cell_type)
                         == std::mem::discriminant(&ct);
@@ -58,13 +60,13 @@ pub fn draw_editor_toolbox(
                     }
                 }
                 // Кнопка очистки: установить Open
-                if ui.button("⬜ Очистить (Open)").clicked() {
+                if ui.button(loc.t("editor.cell.clear")).clicked() {
                     // Используем специальный маркер — Open не является CellTypeDef,
                     // поэтому передаём сигнал через инструмент Erase
                     editor.current_tool = EditorTool::Erase;
                 }
                 ui.add_space(4.0);
-                ui.label(egui::RichText::new("Размер кисти").small().color(egui::Color32::GRAY));
+                ui.label(egui::RichText::new(loc.t("editor.section.brush_size")).small().color(egui::Color32::GRAY));
                 for sz in [BrushSize::One, BrushSize::Three, BrushSize::Five] {
                     ui.radio_value(&mut editor.brush_size, sz, sz.label());
                 }
@@ -73,11 +75,11 @@ pub fn draw_editor_toolbox(
             // --- Настройки структур ---
             if matches!(editor.current_tool, EditorTool::PlaceFactory | EditorTool::PlaceWarbase) {
                 ui.separator();
-                ui.label(egui::RichText::new("Команда").small().color(egui::Color32::GRAY));
+                ui.label(egui::RichText::new(loc.t("editor.section.team")).small().color(egui::Color32::GRAY));
                 for (team, label) in [
-                    (TeamDef::Player,  "🔵 Игрок"),
-                    (TeamDef::Enemy,   "🔴 Враг"),
-                    (TeamDef::Neutral, "⚪ Нейтральный"),
+                    (TeamDef::Player,  loc.t("editor.team.player")),
+                    (TeamDef::Enemy,   loc.t("editor.team.enemy")),
+                    (TeamDef::Neutral, loc.t("editor.team.neutral")),
                 ] {
                     let selected = std::mem::discriminant(&editor.place_team)
                         == std::mem::discriminant(&team);
@@ -88,7 +90,7 @@ pub fn draw_editor_toolbox(
 
                 if editor.current_tool == EditorTool::PlaceFactory {
                     ui.add_space(4.0);
-                    ui.label(egui::RichText::new("Тип фабрики").small().color(egui::Color32::GRAY));
+                    ui.label(egui::RichText::new(loc.t("editor.section.factory_type")).small().color(egui::Color32::GRAY));
                     for (ft, label) in [
                         (FactoryTypeDef::Chassis,     "⚙ Шасси"),
                         (FactoryTypeDef::Cannon,      "💣 Пушка"),
@@ -113,16 +115,16 @@ pub fn draw_editor_toolbox(
             ui.horizontal(|ui| {
                 let can_undo = !editor.undo_stack.is_empty();
                 let can_redo = !editor.redo_stack.is_empty();
-                if ui.add_enabled(can_undo, egui::Button::new("↩ Отмена")).clicked() {
+                if ui.add_enabled(can_undo, egui::Button::new(loc.t("editor.btn.undo"))).clicked() {
                     editor.undo_requested = true;
                 }
-                if ui.add_enabled(can_redo, egui::Button::new("↪ Повтор")).clicked() {
+                if ui.add_enabled(can_redo, egui::Button::new(loc.t("editor.btn.redo"))).clicked() {
                     editor.redo_requested = true;
                 }
             });
             ui.add_space(4.0);
             ui.label(
-                egui::RichText::new("Ctrl+Z / Ctrl+Shift+Z")
+                egui::RichText::new(loc.t("editor.hint.undo_keys"))
                     .small()
                     .color(egui::Color32::DARK_GRAY),
             );
@@ -131,16 +133,16 @@ pub fn draw_editor_toolbox(
             ui.separator();
 
             // --- Файловые операции ---
-            ui.label(egui::RichText::new("Карта").small().color(egui::Color32::GRAY));
-            if ui.button("📄 Новая карта").clicked() {
+            ui.label(egui::RichText::new(loc.t("editor.section.map")).small().color(egui::Color32::GRAY));
+            if ui.button(loc.t("editor.btn.new_map")).clicked() {
                 editor.show_new_map_dialog = true;
             }
-            if ui.button("📂 Открыть").clicked() {
+            if ui.button(loc.t("editor.btn.open")).clicked() {
                 editor.refresh_map_list();
                 editor.show_open_dialog = true;
             }
             let dirty_mark = if editor.dirty { " *" } else { "" };
-            if ui.button(format!("💾 Сохранить{dirty_mark}")).clicked() {
+            if ui.button(format!("{}{dirty_mark}", loc.t("editor.btn.save"))).clicked() {
                 if let Some(err) = editor.validate() {
                     editor.show_validation_error = Some(err);
                 } else {
@@ -162,14 +164,14 @@ pub fn draw_editor_toolbox(
             // --- Тестовый запуск ---
             let can_play = editor.validate().is_none();
             if ui
-                .add_enabled(can_play, egui::Button::new("▶ Тест карты").fill(egui::Color32::from_rgb(30, 100, 30)))
+                .add_enabled(can_play, egui::Button::new(loc.t("editor.btn.test")).fill(egui::Color32::from_rgb(30, 100, 30)))
                 .clicked()
             {
                 editor.play_test_requested = true;
             }
             if !can_play {
                 ui.label(
-                    egui::RichText::new("Нужен варбейс игрока и врага")
+                    egui::RichText::new(loc.t("editor.hint.test_invalid"))
                         .small()
                         .color(egui::Color32::DARK_RED),
                 );
@@ -178,25 +180,25 @@ pub fn draw_editor_toolbox(
             ui.add_space(8.0);
             ui.separator();
             ui.label(
-                egui::RichText::new("ESC — выход в меню")
+                egui::RichText::new(loc.t("editor.hint.esc_menu"))
                     .small()
                     .color(egui::Color32::DARK_GRAY),
             );
 
             // --- Диалог новой карты ---
             if editor.show_new_map_dialog {
-                egui::Window::new("Новая карта")
+                egui::Window::new(loc.t("editor.dialog.new_map"))
                     .collapsible(false)
                     .resizable(false)
                     .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
                     .show(ctx, |ui| {
-                        ui.label("Размер карты:");
+                        ui.label(loc.t("editor.dialog.map_size"));
                         for sz in [MapSize::Small, MapSize::Normal, MapSize::Large] {
                             ui.radio_value(&mut editor.new_map_size, sz, sz.label());
                         }
                         ui.add_space(8.0);
                         ui.horizontal(|ui| {
-                            if ui.button("✅ Создать").clicked() {
+                            if ui.button(loc.t("editor.dialog.create")).clicked() {
                                 let size = editor.new_map_size;
                                 *grid = MapGrid::new(size.value(), size.value());
                                 editor.reset_to_empty(size);
@@ -207,7 +209,7 @@ pub fn draw_editor_toolbox(
                                     }
                                 }
                             }
-                            if ui.button("✕ Отмена").clicked() {
+                            if ui.button(loc.t("editor.dialog.cancel")).clicked() {
                                 editor.show_new_map_dialog = false;
                             }
                         });
@@ -217,13 +219,13 @@ pub fn draw_editor_toolbox(
             // --- Диалог открытия ---
             if editor.show_open_dialog {
                 let maps = editor.available_maps.clone();
-                egui::Window::new("Открыть карту")
+                egui::Window::new(loc.t("editor.dialog.open_map"))
                     .collapsible(false)
                     .resizable(false)
                     .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
                     .show(ctx, |ui| {
                         if maps.is_empty() {
-                            ui.label("Карты не найдены в data/maps/");
+                            ui.label(loc.t("editor.dialog.no_maps"));
                         }
                         egui::ScrollArea::vertical().max_height(200.0).show(ui, |ui| {
                             for map_name in &maps {
@@ -247,7 +249,7 @@ pub fn draw_editor_toolbox(
                                 }
                             }
                         });
-                        if ui.button("✕ Отмена").clicked() {
+                        if ui.button(loc.t("editor.dialog.cancel")).clicked() {
                             editor.show_open_dialog = false;
                         }
                     });
@@ -255,7 +257,7 @@ pub fn draw_editor_toolbox(
 
             // --- Диалог ошибки ---
             if let Some(err) = editor.show_validation_error.clone() {
-                egui::Window::new("Ошибка")
+                egui::Window::new(loc.t("editor.dialog.error"))
                     .collapsible(false)
                     .resizable(false)
                     .anchor(egui::Align2::CENTER_CENTER, egui::vec2(0.0, 0.0))
@@ -276,7 +278,7 @@ pub fn draw_editor_map_props(
     mut contexts: EguiContexts,
     mut editor: ResMut<EditorState>,
     grid: Res<MapGrid>,
-    mut next_state: ResMut<NextState<AppState>>,
+    loc: Res<Localization>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
@@ -284,44 +286,44 @@ pub fn draw_editor_map_props(
         .default_width(200.0)
         .resizable(false)
         .show(ctx, |ui| {
-            ui.heading("Свойства");
+            ui.heading(loc.t("editor.props.title"));
             ui.separator();
 
-            ui.label("Имя файла:");
+            ui.label(loc.t("editor.props.file_name"));
             ui.text_edit_singleline(&mut editor.file_name);
             ui.add_space(4.0);
 
-            ui.label("Название карты:");
+            ui.label(loc.t("editor.props.map_name"));
             ui.text_edit_singleline(&mut editor.map_name);
             ui.add_space(4.0);
 
-            ui.label("Описание:");
+            ui.label(loc.t("editor.props.description"));
             ui.text_edit_multiline(&mut editor.map_description);
             ui.add_space(8.0);
 
             ui.separator();
-            ui.label(egui::RichText::new("Статистика").small().color(egui::Color32::GRAY));
+            ui.label(egui::RichText::new(loc.t("editor.props.stats")).small().color(egui::Color32::GRAY));
 
             let size = editor.map_size.value();
-            ui.label(format!("Размер: {}×{}", grid.width, grid.height));
-            ui.label(format!("Фабрик: {}", editor.factories.len()));
-            ui.label(format!("Варбейсов: {}", editor.warbases.len()));
+            ui.label(format!("{} {}×{}", loc.t("editor.props.size"), grid.width, grid.height));
+            ui.label(format!("{} {}", loc.t("editor.props.factories"), editor.factories.len()));
+            ui.label(format!("{} {}", loc.t("editor.props.warbases"), editor.warbases.len()));
 
             let player_wb = editor.warbases.iter().filter(|w| matches!(w.team, TeamDef::Player)).count();
             let enemy_wb  = editor.warbases.iter().filter(|w| matches!(w.team, TeamDef::Enemy)).count();
             let neutral_f = editor.factories.iter().filter(|f| matches!(f.team, TeamDef::Neutral)).count();
 
-            ui.label(format!("  Игрок: {player_wb} ВБ"));
-            ui.label(format!("  Враг:  {enemy_wb} ВБ"));
-            ui.label(format!("  Нейтр: {neutral_f} фабрик"));
+            ui.label(format!("{} {player_wb} ВБ", loc.t("editor.props.player_wb")));
+            ui.label(format!("{} {enemy_wb} ВБ", loc.t("editor.props.enemy_wb")));
+            ui.label(format!("{} {neutral_f}", loc.t("editor.props.neutral_f")));
 
             let spawn = editor.player_spawn;
-            ui.label(format!("Спавн: ({},{})", spawn.0, spawn.1));
+            ui.label(format!("{} ({},{})", loc.t("editor.props.spawn"), spawn.0, spawn.1));
 
             if let Some(hov) = editor.hovered_cell {
                 ui.add_space(6.0);
                 ui.label(
-                    egui::RichText::new(format!("Курсор: ({},{})", hov.0, hov.1))
+                    egui::RichText::new(format!("{} ({},{})", loc.t("editor.props.cursor"), hov.0, hov.1))
                         .color(egui::Color32::YELLOW)
                         .small(),
                 );
@@ -341,33 +343,17 @@ pub fn draw_editor_map_props(
             if let Some(err) = editor.validate() {
                 ui.colored_label(egui::Color32::RED, format!("⚠ {err}"));
             } else {
-                ui.colored_label(egui::Color32::GREEN, "✓ Карта валидна");
+                ui.colored_label(egui::Color32::GREEN, loc.t("editor.props.valid"));
             }
 
             ui.add_space(8.0);
             ui.separator();
 
-            // --- Тестовый запуск ---
-            let can_play = editor.validate().is_none();
-            if ui.add_enabled(can_play, egui::Button::new("▶ Тест")).clicked() {
-                // Сохраняем временный сценарий для плейтеста
-                let _ = std::fs::create_dir_all("saves");
-                let scenario_ron = format!(
-                    "(\n    name: \"[PLAYTEST]\",\n    description: \"Editor playtest\",\n    map_path: \"data/maps/{}.ron\",\n)\n",
-                    editor.file_name
-                );
-                if std::fs::write("saves/editor_playtest.ron", &scenario_ron).is_ok() {
-                    // TODO: 11.16 — AppState::Playing с флагом возврата в Editor
-                    next_state.set(AppState::Playing);
-                }
-            }
-            ui.label(egui::RichText::new("(ESC в игре вернёт в меню)").small().color(egui::Color32::DARK_GRAY));
-
-            // Заглушка для размера карты (смена требует пересоздания grid)
+            // Информация о размере карты (смена — через «Новая карта»)
             ui.add_space(6.0);
             ui.separator();
-            ui.label(egui::RichText::new("Размер карты").small().color(egui::Color32::GRAY));
-            ui.label(egui::RichText::new("(Смена — через 'Новая карта')").small().color(egui::Color32::DARK_GRAY));
+            ui.label(egui::RichText::new(loc.t("editor.props.map_size_label")).small().color(egui::Color32::GRAY));
+            ui.label(egui::RichText::new(loc.t("editor.props.size_hint")).small().color(egui::Color32::DARK_GRAY));
             let _ = size;
         });
 
