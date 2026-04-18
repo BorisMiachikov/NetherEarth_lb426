@@ -17,6 +17,7 @@ use crate::{
     player::PlayerPlugin,
     robot::RobotPlugin,
     save::SavePlugin,
+    spatial::SpatialPlugin,
     structure::StructurePlugin,
     ui::UiPlugin,
 };
@@ -46,6 +47,7 @@ impl Plugin for AppPlugin {
             PlayerPlugin,
             RobotPlugin,
             CommandPlugin,
+            SpatialPlugin,
             MovementPlugin,
         ))
         .add_plugins((

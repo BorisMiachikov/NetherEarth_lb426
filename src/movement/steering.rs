@@ -129,40 +129,41 @@ pub fn follow_path(
     }
 }
 
-/// Расталкивание роботов при наложении (O(n²), допустимо до ~100 роботов).
+/// Расталкивание роботов при наложении через SpatialIndex (O(n·k), k — соседи в ячейке).
 /// После толчка позиция зажимается по границам карты и не входит в непроходимые ячейки.
 pub fn separate_robots(
     time: Res<Time>,
     map: Res<MapGrid>,
+    index: Res<crate::spatial::SpatialIndex>,
     mut query: Query<(Entity, &mut Transform, &Chassis), With<RobotMarker>>,
+    mut neighbors_buf: Local<Vec<(Entity, Vec3)>>,
 ) {
-    /// Минимальное расстояние между роботами (в единицах мира = клетках).
     const MIN_DIST: f32 = 1.0;
-    /// Скорость расталкивания (единиц/сек).
     const PUSH_SPEED: f32 = 2.5;
 
     let dt = time.delta_secs();
 
-    // Собираем позиции заранее, чтобы избежать двойного borrow.
-    let positions: Vec<(Entity, Vec3)> = query
-        .iter()
-        .map(|(e, tf, _)| (e, tf.translation))
-        .collect();
+    debug_assert!(
+        query.iter().count() < 200,
+        "separate_robots: слишком много роботов ({}), проверь производительность",
+        query.iter().count()
+    );
 
     for (entity, mut tf, chassis) in &mut query {
-        let mut push = Vec3::ZERO;
-
-        for &(other_e, other_pos) in &positions {
-            if entity == other_e {
-                continue;
+        // Собираем соседей из SpatialIndex в переиспользуемый буфер.
+        neighbors_buf.clear();
+        let pos = tf.translation;
+        index.query_radius(pos, MIN_DIST, |other_e, other_pos, _| {
+            if other_e != entity {
+                neighbors_buf.push((other_e, other_pos));
             }
-            let diff = Vec2::new(
-                tf.translation.x - other_pos.x,
-                tf.translation.z - other_pos.z,
-            );
+        });
+
+        let mut push = Vec3::ZERO;
+        for &(_, other_pos) in neighbors_buf.iter() {
+            let diff = Vec2::new(pos.x - other_pos.x, pos.z - other_pos.z);
             let dist = diff.length();
             if dist < MIN_DIST && dist > 0.001 {
-                // Сила толчка пропорциональна степени перекрытия.
                 let strength = PUSH_SPEED * dt * (1.0 - dist / MIN_DIST);
                 let push_xz = diff.normalize() * strength;
                 push += Vec3::new(push_xz.x, 0.0, push_xz.y);
@@ -174,8 +175,6 @@ pub fn separate_robots(
         }
 
         let new_pos = tf.translation + push;
-
-        // Зажимаем по границам карты.
         let map_max_x = map.width as f32 * CELL_SIZE - CELL_SIZE * 0.5;
         let map_max_z = map.height as f32 * CELL_SIZE - CELL_SIZE * 0.5;
         let clamped = Vec3::new(
@@ -184,7 +183,6 @@ pub fn separate_robots(
             new_pos.z.clamp(CELL_SIZE * 0.5, map_max_z),
         );
 
-        // Применяем только если целевая ячейка проходима для данного шасси.
         let passable = map
             .world_to_grid(clamped)
             .and_then(|(gx, gy)| map.get(gx, gy))

@@ -1,0 +1,14 @@
+(
+    name: "Стресс-тест (100+ роботов)",
+    description: "20 фабрик, высокие стартовые ресурсы. Для профилирования SpatialIndex.",
+    map_path: "data/maps/stress.ron",
+    initial_resources: Some((
+        general:     500,
+        chassis:     300,
+        cannon:      200,
+        missile:     200,
+        phasers:     200,
+        electronics: 150,
+        nuclear:     100,
+    )),
+)

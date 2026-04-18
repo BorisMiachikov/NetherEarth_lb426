@@ -3,9 +3,9 @@
 **Стек:** Rust (Stable), Bevy 0.18, Serde + RON  
 **Тип:** Solo-разработка  
 **Дата создания:** 2026-04-04  
-**Последнее обновление:** 2026-04-18 — Undo/Redo, тестовый запуск (11.11, 11.16), Manual Control (4.10) реализованы  
+**Последнее обновление:** 2026-04-18 — Фаза 12.A+B завершена (12.1–12.11): 0 warnings, локализация, рефакторинг save, тесты  
 **Авторитетная спецификация:** `1/Nether Earth LB426.md` (v2.0)  
-**Документация:** [README](README.md) · [Архитектура](docs/ARCHITECTURE.md) · [Геймплей](docs/GAMEPLAY.md) · [Редактор](docs/EDITOR.md)
+**Документация:** [README](README.md) · [Архитектура](docs/ARCHITECTURE.md) · [Геймплей](docs/GAMEPLAY.md) · [Редактор](docs/EDITOR.md) · [План улучшений](docs/IMPROVEMENTS_PLAN.md)
 
 ---
 
@@ -29,7 +29,8 @@
 | `audio` | 🔶 Скелет | AudioSettings ресурс, интеграция без .ogg файлов |
 | `save` | ✅ Реализован | SaveData, 3 слота + автосохранение RON, сериализация всех роботов/структур/ресурсов |
 | `debug` | ✅ Реализован | Gizmos сетка, overlay (координаты/FPS/GameTime), egui-панель спавна роботов |
-| `editor` | 🔶 В разработке (~95%) | Undo/Redo (Ctrl+Z), Play-тест (▶ Тест + ESC возврат). Pending: диалог dirty (11.18), локализация UI (11.19) |
+| `editor` | ✅ Реализован | Undo/Redo, Play-тест, dirty-диалог, полная локализация UI (EN/RU) |
+| `tech-debt` | 🔶 В работе | Фаза 12.A завершена (12.1–12.4): 0 warnings, 0 deprecated API, полная локализация |
 
 ---
 
@@ -525,15 +526,15 @@ Bevy Events для межсистемного общения:
 - [x] **11.8** Структуры: placement через клик; gizmos-превью в `draw_editor_structures` (фабрики/варбейсы/spawn); валидация — ячейка Open `[M]`
 - [x] **11.9** `editor/ui.rs` — `draw_editor_toolbox` (панель слева): инструмент, brush size, тип клетки, тип фабрики, команда `[L]`
 - [x] **11.10** `draw_editor_map_props` (панель справа): имя, описание, размер карты, счётчики фабрик/варбейсов/клеток `[M]`
-- [ ] **11.11** Undo/Redo: стек `EditorAction` (CellChanged, StructurePlaced, StructureRemoved), Ctrl+Z / Ctrl+Shift+Z `[L]`
+- [x] **11.11** Undo/Redo: стек `EditorAction` (CellChanged, StructurePlaced, StructureRemoved), Ctrl+Z / Ctrl+Shift+Z `[L]`
 - [x] **11.12** Сохранение: кнопка «Сохранить» → `ron::ser::to_string_pretty` → `data/maps/{name}.ron` + `data/scenarios/{name}.ron` `[M]`
 - [x] **11.13** Загрузка: список файлов из `data/maps/`, выбор → десериализация → обновление `EditorState` и сцены `[M]`
 - [x] **11.14** «Новая карта» — заполнение Open-клетками, сброс структур `[S]`
 - [x] **11.15** Валидация перед сохранением: минимум 1 player warbase, 1 enemy warbase, валидный player_spawn; ошибки в egui-диалоге `[M]`
 - [x] **11.16** Тестовый запуск: кнопка «▶ Тест» → `AppState::Playing` (EditorPlaytest) → ESC возвращает в редактор `[M]`
 - [x] **11.17** `draw_editor_grid`: gizmos grid-оверлей (alpha=0.08) + координаты клетки в статус-баре `[S]`
-- [🔶] **11.18** Dirty-флаг ✅ реализован; диалог «Сохранить изменения?» при выходе — TODO `[S]`
-- [ ] **11.19** Локализация UI редактора: ключи в `assets/locales/en.ron` и `ru.ron` `[S]`
+- [x] **11.18** Dirty-флаг + диалог «Сохранить изменения?» при выходе из редактора `[S]`
+- [x] **11.19** Локализация UI редактора: ключи в `assets/locales/en.ron` и `ru.ron` `[S]`
 
 **Исправления регрессии (2026-04-11):**
 - [x] Egui-панели редактора пропадали → архитектурное решение: единственная камера + маркер
@@ -553,6 +554,68 @@ Bevy Events для межсистемного общения:
 - UI работает на RU и EN
 
 **Плагины:** `rfd` 0.15 (опционально, native file dialogs) — если нативный file picker нужен. Иначе свой egui-диалог со списком файлов из `data/maps/`.
+
+---
+
+### 🔴 Фаза 12: Технический долг, надёжность и производительность
+
+**Цель:** По результатам аудита 2026-04-18 устранить критические недочёты архитектуры и кода перед Phase 10 (релиз). Полный перечень — в [docs/IMPROVEMENTS_PLAN.md](docs/IMPROVEMENTS_PLAN.md).
+
+**Зависимости:** Фазы 0–9, 11
+
+#### 12.A — Гигиена кодовой базы `[0.5–1 день]`
+
+- [x] **12.1** Чистка 49 compiler warnings: `cargo fix --allow-dirty`, удалить `dead_code`/неиспользуемые поля (`owner_team`, `CommandQueue::current`, `Health::heal`, `world_bounds`, `ProductionRate`-поля), `CameraTarget`, `IsometricCamera` `[M]`
+- [x] **12.2** Заменить deprecated `egui::Context::screen_rect()` → `content_rect()` в `editor/mod.rs` `[S]`
+- [x] **12.3** Локализация UI редактора и `builder_ui.rs`: добавить ключи `ui.resource.*`, `editor.tool.*` в `assets/locales/{en,ru}.ron`; удалить кириллические литералы из `src/ui/**` и `src/editor/**` (закрывает 11.19) `[M]`
+- [x] **12.4** Диалог «Сохранить изменения?» при выходе из редактора при `dirty == true` — 3 кнопки (Сохранить/Не сохранять/Отмена) (закрывает 11.18) `[M]`
+
+#### 12.B — Надёжность Save/Load `[1.5–2 дня]`
+
+- [x] **12.5** Разбить `save/systems.rs::apply_pending_load()` (134 строки, 16+ параметров) на `restore_structures`, `restore_resources`, `restore_robots`, `restore_game_state`; оркестратор ≤40 строк `[L]`
+- [x] **12.6** Разбить `save/systems.rs::on_trigger_new_game()` (97 строк) на `reset_structures/resources/player_scout/ai_commander` + `spawn_initial_robots` `[M]`
+- [x] **12.7** Версионирование сохранений: поле `version: u32` в `SaveData`, проверка в `read_save()`, цепочка `migrate_v1_to_v2(...)`, тест «v1-файл → актуальная структура» `[L]`
+- [x] **12.8** Синхронизация `MapGrid` при загрузке: `warn!` при stale entity в `restore_structures` `[M]`
+- [x] **12.9** `on_trigger_load`: сбрасывать `pending.0 = None` перед чтением; при Err — лог error, не ронять игру `[S]`
+- [x] **12.10** Integration-тест `tests/save_roundtrip.rs`: save→load→сверка счётчиков, повреждённый RON, миграция версии (5 тестов зелёные) `[L]`
+- [x] **12.11** Закрыть **6.13** — `ScenarioInitialResources` в `ScenarioDef` (RON-поле `initial_resources`); menu перезаписывает PlayerResources после TriggerNewGame `[M]`
+
+#### 12.C — Рефакторинг UI-монолитов `[1 день]`
+
+- [x] **12.12** `player/commands_ui.rs::robot_info_panel()` (359 строк) → `collect_selection_info` + `draw_single_robot_panel` + `draw_multi_robot_panel` + `handle_selection_actions` (≤100 строк каждая) `[L]`
+- [x] **12.13** Разбить `ai/systems.rs` (394 строки) на подмодули: `ai/build.rs`, `ai/command.rs`, `ai/victory.rs` `[M]`
+- [x] **12.14** Разбить `ui/menu.rs` (443 строки) на `ui/menu/{main,pause,scenario_picker,save_slots}.rs` `[M]`
+
+#### 12.D — Производительность `[1.5 дня]`
+
+- [x] **12.15** `Res<SpatialIndex>` — uniform grid по клеткам карты; обновление раз в FixedUpdate; источник для `combat/targeting`, `movement/steering::separate_robots`, `ai/systems` (ближайшие враги/фабрики) `[L]`
+- [x] **12.16** `combat/targeting.rs::acquire_targets()` на SpatialIndex; пересчёт цели только при движении >2 units либо смерти текущей цели `[M]`
+- [x] **12.17** `movement/steering.rs::separate_robots()` на SpatialIndex + `Local<Vec<...>>` для реюза буфера; `debug_assert!(robots.len() < 200)` `[M]`
+- [x] **12.18** `data/scenarios/stress.ron` — 20 фабрик, высокие ресурсы; SpatialIndex активен; цель: 60 FPS @ 100+ роботов `[M]`
+
+#### 12.E — Полировка и надёжность `[1–1.5 дня]`
+
+- [ ] **12.19** Debug-логирование: `combat/targeting` при смене цели, `ai/systems` выбранный blueprint, `apply_pending_load` поэтапные `info!` `[S]`
+- [ ] **12.20** Инварианты через `debug_assert!`: Robot ровно один Chassis при спавне, `MapGrid::Structure(e)` → e жив, `CaptureProgress.progress ∈ [0, required]` `[S]`
+- [ ] **12.21** Валидация границ карты в `spawn_robot()`: `debug_assert!(map.contains_world(pos))`; release-кламп + `warn!` `[S]`
+- [x] **12.22** Graceful degradation аудио: отсутствие .wav → один `warn!` при старте, не spam в кадре выстрела `[S]`
+- [ ] **12.23** RON hot-reload за feature `dev`: `RonAssetPlugin` + AssetEvent-observer обновляет `ModuleRegistry`/`GameConfig` без рестарта `[M]`
+- [ ] **12.24** Унифицированный хелпер локализации: `t!(key)` или `localization.get(key)` с fallback на ключ `[S]`
+- [ ] **12.25** Обновить in-game keymap overlay (F1) под orbit (MMB+Z/C) и Editor `[S]`
+
+#### 12.F — CI и качество `[0.5 дня]`
+
+- [ ] **12.26** GitHub Actions: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` на push/PR `[M]`
+- [ ] **12.27** Расширить тестовое покрытие: сценарий захвата, pathfinding edge cases, AI decision (≥5 новых юнит-тестов) `[M]`
+
+**Критерии проверки:**
+- `cargo clippy --all-targets -- -D warnings` — ноль предупреждений
+- 60 FPS при 100+ роботах (стресс-сценарий)
+- Save v1 корректно мигрирует в v2 без потери данных
+- Integration-тесты save/load зелёные
+- Все строки UI через локализацию (grep по кириллице в `src/ui/**` и `src/editor/**` — пусто)
+- CI-пайплайн green на push
+- `ai/systems.rs`, `player/commands_ui.rs`, `save/systems.rs`, `ui/menu.rs` — ни одного файла >300 строк
 
 ---
 
@@ -607,4 +670,5 @@ Bevy Events для межсистемного общения:
 | 9 | Сохранение + Локализация | 8-12 |
 | 10 | Полировка + Релиз | 14-20 |
 | 11 | Редактор уровней | 10-14 |
-| | **Итого (solo)** | **~125-175 дней (25-35 недель)** |
+| 12 | Техдолг / надёжность / перф | 6-8 |
+| | **Итого (solo)** | **~131-183 дней (26-37 недель)** |

@@ -1,14 +1,15 @@
+pub mod build;
+pub mod command;
 pub mod scoring;
 pub mod state;
-pub mod systems;
+pub mod victory;
 
 use bevy::prelude::*;
 
+use build::ai_build_robots;
+use command::{ai_assign_commands, arm_nuclear_on_arrival, seek_destroy_base, update_seek_destroy};
 use state::{load_ai_config, AICommander, GameResult};
-use systems::{
-    ai_assign_commands, ai_build_robots, arm_nuclear_on_arrival, check_victory_defeat,
-    seek_destroy_base, update_seek_destroy,
-};
+use victory::check_victory_defeat;
 
 use crate::app::state::AppState;
 
@@ -28,7 +29,8 @@ impl Plugin for AiPlugin {
                     update_seek_destroy,
                     seek_destroy_base,
                     arm_nuclear_on_arrival,
-                ).run_if(in_state(AppState::Playing)),
+                )
+                    .run_if(in_state(AppState::Playing)),
             );
     }
 }

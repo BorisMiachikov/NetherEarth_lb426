@@ -13,10 +13,9 @@ use projectile::move_projectiles;
 use targeting::acquire_targets;
 use visuals::{draw_muzzle_flashes, draw_projectiles};
 
-pub use projectile::Projectile;
-pub use weapon::{CombatTarget, MuzzleFlash, WeaponCooldowns};
+pub use weapon::WeaponCooldowns;
 
-use crate::app::state::AppState;
+use crate::{app::state::AppState, spatial::SpatialSet};
 
 pub struct CombatPlugin;
 
@@ -26,10 +25,11 @@ impl Plugin for CombatPlugin {
             .add_systems(
                 FixedUpdate,
                 (
-                    acquire_targets,
+                    acquire_targets.after(SpatialSet),
                     fire_weapons.after(acquire_targets),
                     move_projectiles.after(fire_weapons),
-                ).run_if(in_state(AppState::Playing)),
+                )
+                    .run_if(in_state(AppState::Playing)),
             )
             .add_systems(
                 Update,

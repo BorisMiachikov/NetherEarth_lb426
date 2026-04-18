@@ -1,6 +1,7 @@
 mod ai;
 mod app;
 mod audio;
+pub mod spatial;
 mod camera;
 mod combat;
 mod command;
@@ -14,7 +15,7 @@ mod map;
 mod movement;
 mod player;
 mod robot;
-mod save;
+pub mod save;
 mod structure;
 mod ui;
 

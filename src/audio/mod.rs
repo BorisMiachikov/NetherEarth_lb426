@@ -13,6 +13,8 @@ use crate::{
 pub struct AudioSettings {
     pub sfx_volume: f32,
     pub music_volume: f32,
+    /// false — аудио недоступно (файлы несовместимы с текущим декодером)
+    pub audio_ok: bool,
 }
 
 impl Default for AudioSettings {
@@ -20,30 +22,33 @@ impl Default for AudioSettings {
         Self {
             sfx_volume: 0.8,
             music_volume: 0.4,
+            audio_ok: false,
         }
     }
 }
 
 #[derive(Resource)]
 struct SoundHandles {
-    shot: Handle<AudioSource>,
-    explosion: Handle<AudioSource>,
+    shot:         Handle<AudioSource>,
+    explosion:    Handle<AudioSource>,
     construction: Handle<AudioSource>,
-    select: Handle<AudioSource>,
-    music: Handle<AudioSource>,
+    select:       Handle<AudioSource>,
+    music:        Handle<AudioSource>,
 }
 
 #[derive(Component)]
 struct MusicPlayer;
 
-fn load_sounds(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn load_sounds(mut commands: Commands, asset_server: Res<AssetServer>, mut settings: ResMut<AudioSettings>) {
     commands.insert_resource(SoundHandles {
-        shot:         asset_server.load("audio/sfx/shot.wav"),
-        explosion:    asset_server.load("audio/sfx/explosion.wav"),
-        construction: asset_server.load("audio/sfx/construction.wav"),
-        select:       asset_server.load("audio/sfx/select.wav"),
+        shot:         asset_server.load("audio/sfx/shot.ogg"),
+        explosion:    asset_server.load("audio/sfx/explosion.ogg"),
+        construction: asset_server.load("audio/sfx/construction.ogg"),
+        select:       asset_server.load("audio/sfx/select.ogg"),
         music:        asset_server.load("audio/music/mammoth.ogg"),
     });
+    settings.audio_ok = true;
+    info!("Audio: OGG-файлы загружены, звук включён.");
 }
 
 fn start_music(
@@ -51,6 +56,9 @@ fn start_music(
     sounds: Res<SoundHandles>,
     settings: Res<AudioSettings>,
 ) {
+    if !settings.audio_ok {
+        return;
+    }
     commands.spawn((
         AudioPlayer::new(sounds.music.clone()),
         PlaybackSettings {
@@ -85,6 +93,7 @@ fn on_shot(
     settings: Res<AudioSettings>,
     mut commands: Commands,
 ) {
+    if !settings.audio_ok { return; }
     if trigger.event().attacker.is_some() {
         play_sfx(&mut commands, sounds.shot.clone(), settings.sfx_volume);
     }
@@ -96,6 +105,7 @@ fn on_destroyed(
     settings: Res<AudioSettings>,
     mut commands: Commands,
 ) {
+    if !settings.audio_ok { return; }
     play_sfx(&mut commands, sounds.explosion.clone(), settings.sfx_volume);
 }
 
@@ -105,6 +115,7 @@ fn on_captured(
     settings: Res<AudioSettings>,
     mut commands: Commands,
 ) {
+    if !settings.audio_ok { return; }
     play_sfx(&mut commands, sounds.construction.clone(), settings.sfx_volume);
 }
 
@@ -114,9 +125,8 @@ fn on_unit_selected(
     settings: Res<AudioSettings>,
     mut commands: Commands,
 ) {
-    if !added.is_empty() {
-        play_sfx(&mut commands, sounds.select.clone(), settings.sfx_volume);
-    }
+    if !settings.audio_ok || added.is_empty() { return; }
+    play_sfx(&mut commands, sounds.select.clone(), settings.sfx_volume);
 }
 
 pub struct AudioPlugin;
