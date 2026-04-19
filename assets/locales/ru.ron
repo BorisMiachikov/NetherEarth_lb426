@@ -36,9 +36,15 @@
     "gameover.quit": "✕  Выход",
 
     // Настройки
+    "settings.title": "НАСТРОЙКИ",
     "settings.language": "Язык",
     "settings.music": "Музыка",
     "settings.sfx": "Звуки",
+    "settings.audio": "Звук",
+    "settings.display": "Экран",
+    "settings.resolution": "Разрешение",
+    "settings.keybindings": "Клавиши",
+    "pause.settings": "⚙  Настройки",
 
     // Команды
     "cmd.attack": "Атака",
