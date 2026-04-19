@@ -6,6 +6,7 @@ use crate::{
     map::grid::CELL_SIZE,
     movement::{exploration_target, velocity::MovementTarget},
     robot::components::{Nuclear, RobotMarker, VisionRange},
+    spatial::SpatialIndex,
     structure::{capture::Capturable, warbase::Warbase},
 };
 
@@ -27,7 +28,7 @@ pub struct Retreating;
 pub fn ai_assign_commands(
     time: Res<Time>,
     mut ai: ResMut<AICommander>,
-    mut idle_robots: Query<(Entity, &mut RobotCommand, &Transform, Option<&Nuclear>), With<RobotMarker>>,
+    mut idle_robots: Query<(Entity, &mut RobotCommand, &Transform, &Team, Option<&Nuclear>), With<RobotMarker>>,
     all_robots: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
     capturable: Query<(Entity, &Transform, &Team), With<Capturable>>,
     warbases: Query<(&Transform, &Team), With<Warbase>>,
@@ -54,12 +55,8 @@ pub fn ai_assign_commands(
 
     let be_aggressive = threat_ratio(enemy_count, friendly_count) > ai.config.aggression;
 
-    for (entity, mut cmd, _robot_tf, nuclear) in &mut idle_robots {
-        let team = all_robots
-            .iter()
-            .find(|(e, _, _)| *e == entity)
-            .map(|(_, _, t)| *t);
-        if team != Some(Team::Enemy) || !matches!(*cmd, RobotCommand::Idle) {
+    for (_, mut cmd, _robot_tf, team, nuclear) in &mut idle_robots {
+        if *team != Team::Enemy || !matches!(*cmd, RobotCommand::Idle) {
             continue;
         }
 
@@ -87,7 +84,7 @@ pub fn ai_assign_commands(
 }
 
 /// Управляет роботами с приказом SeekAndDestroy:
-/// - ищет врагов в радиусе VisionRange
+/// - ищет врагов в радиусе VisionRange через SpatialIndex (O(k) вместо O(n))
 /// - при обнаружении — преследует
 /// - при отсутствии видимых врагов — исследует карту
 pub fn update_seek_destroy(
@@ -97,7 +94,7 @@ pub fn update_seek_destroy(
         With<RobotMarker>,
     >,
     mov_targets: Query<Option<&MovementTarget>, With<RobotMarker>>,
-    all_robots: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
+    index: Res<SpatialIndex>,
     map: Res<crate::map::grid::MapGrid>,
 ) {
     let snapshot: Vec<(Entity, Vec3, Team, f32, Option<Entity>, Option<Vec3>)> = seekers
@@ -111,19 +108,26 @@ pub fn update_seek_destroy(
 
     for (entity, robot_pos, team, vision_range, tracked_opt, current_mov) in snapshot {
         let from_cell = map.world_to_grid(robot_pos);
-        let visible_enemy = all_robots
-            .iter()
-            .filter(|(e, _, t)| *e != entity && **t != team)
-            .filter(|(_, t, _)| robot_pos.distance(t.translation) <= vision_range)
-            .filter(|(_, t, _)| {
-                let to_cell = map.world_to_grid(t.translation);
-                match (from_cell, to_cell) {
-                    (Some(f), Some(t)) => map.has_line_of_sight(f, t),
-                    _ => false,
+        let mut visible_enemy: Option<(Entity, Vec3)> = None;
+        let mut min_dist = f32::MAX;
+
+        index.query_radius(robot_pos, vision_range, |e, pos, t| {
+            if e == entity || t == team {
+                return;
+            }
+            let to_cell = map.world_to_grid(pos);
+            let has_los = match (from_cell, to_cell) {
+                (Some(f), Some(tc)) => map.has_line_of_sight(f, tc),
+                _ => false,
+            };
+            if has_los {
+                let dist = robot_pos.distance(pos);
+                if dist < min_dist {
+                    min_dist = dist;
+                    visible_enemy = Some((e, pos));
                 }
-            })
-            .min_by_key(|(_, t, _)| (robot_pos.distance(t.translation) * 100.0) as u32)
-            .map(|(e, t, _)| (e, t.translation));
+            }
+        });
 
         let Ok((_, mut cmd, _, _, _)) = seekers.get_mut(entity) else { continue; };
 
@@ -153,7 +157,7 @@ pub fn update_retreat(
         With<RobotMarker>,
     >,
     retreating: Query<Entity, (With<RobotMarker>, With<Retreating>)>,
-    all_robots: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
+    index: Res<SpatialIndex>,
     map: Res<crate::map::grid::MapGrid>,
 ) {
     let map_max_x = map.width as f32 * CELL_SIZE - CELL_SIZE * 0.5;
@@ -174,12 +178,17 @@ pub fn update_retreat(
             continue;
         }
 
-        let nearest_enemy = all_robots
-            .iter()
-            .filter(|(e, _, t)| *e != entity && **t != *team)
-            .filter(|(_, t, _)| robot_pos.distance(t.translation) <= vision.0)
-            .min_by_key(|(_, t, _)| (robot_pos.distance(t.translation) * 100.0) as u32)
-            .map(|(_, t, _)| t.translation);
+        let mut nearest_enemy: Option<Vec3> = None;
+        let mut min_dist = f32::MAX;
+        index.query_radius(robot_pos, vision.0, |e, pos, t| {
+            if e != entity && t != *team {
+                let dist = robot_pos.distance(pos);
+                if dist < min_dist {
+                    min_dist = dist;
+                    nearest_enemy = Some(pos);
+                }
+            }
+        });
 
         if let Some(enemy_pos) = nearest_enemy {
             let flee_dir = (robot_pos - enemy_pos).normalize_or_zero();
@@ -188,8 +197,10 @@ pub fn update_retreat(
                 robot_pos.y,
                 (robot_pos.z + flee_dir.z * FLEE_DISTANCE).clamp(CELL_SIZE * 0.5, map_max_z),
             );
+            if !retreating.contains(entity) {
+                info!("[Retreat] {:?} бежит (HP {:.0}%)", entity, hp_ratio * 100.0);
+            }
             commands.entity(entity).try_insert((Retreating, MovementTarget(flee_target)));
-            info!("[Retreat] {:?} бежит (HP {:.0}%)", entity, hp_ratio * 100.0);
         }
     }
 }

@@ -11,7 +11,7 @@ use command::{ai_assign_commands, arm_nuclear_on_arrival, seek_destroy_base, upd
 use state::{load_ai_config, AICommander, GameResult};
 use victory::check_victory_defeat;
 
-use crate::app::state::AppState;
+use crate::{app::state::AppState, spatial::SpatialSet};
 
 pub struct AiPlugin;
 
@@ -31,6 +31,7 @@ impl Plugin for AiPlugin {
                     arm_nuclear_on_arrival,
                     update_retreat,
                 )
+                    .after(SpatialSet)
                     .run_if(in_state(AppState::Playing)),
             );
     }

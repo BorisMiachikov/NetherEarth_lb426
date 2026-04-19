@@ -122,17 +122,19 @@ pub fn spawn_structures_system(
                 Transform::from_translation(world_pos.with_y(0.5)),
             ))
             .with_children(|parent| {
-                // Крыша (тёмная плита)
+                // Крыша (тёмная плита) — клики проходят сквозь к родителю
                 parent.spawn((
                     Mesh3d(factory_roof_mesh.clone()),
                     MeshMaterial3d(dark_mat.clone()),
                     Transform::from_xyz(0.0, 0.57, 0.0),
+                    Pickable::IGNORE,
                 ));
-                // Труба с краю крыши
+                // Труба с краю крыши — клики проходят сквозь к родителю
                 parent.spawn((
                     Mesh3d(factory_pipe_mesh.clone()),
                     MeshMaterial3d(dark_mat.clone()),
                     Transform::from_xyz(0.4, 0.95, -0.4),
+                    Pickable::IGNORE,
                 ));
             })
             .id();
@@ -178,18 +180,20 @@ pub fn spawn_structures_system(
                 Transform::from_translation(world_pos.with_y(0.8)),
             ))
             .with_children(|parent| {
-                // Купол сверху корпуса
+                // Купол — клики проходят сквозь к родителю (entity с Warbase)
                 parent.spawn((
                     Mesh3d(warbase_dome_mesh.clone()),
                     MeshMaterial3d(dome_mat),
                     Transform::from_xyz(0.0, 0.8, 0.0),
+                    Pickable::IGNORE,
                 ));
-                // 4 угловые башенки
+                // 4 угловые башенки — клики проходят сквозь к родителю
                 for (x, z) in [(-0.85, -0.85), (0.85, -0.85), (-0.85, 0.85), (0.85, 0.85)] {
                     parent.spawn((
                         Mesh3d(warbase_tower_mesh.clone()),
                         MeshMaterial3d(tower_mat.clone()),
                         Transform::from_xyz(x, 0.1, z),
+                        Pickable::IGNORE,
                     ));
                 }
             })
@@ -216,7 +220,8 @@ pub fn structure_tooltip(
     struct StructInfo {
         title: String,
         owner: Team,
-        production: Option<(String, String)>, // (специфический ресурс, количество)
+        production: Option<(String, String)>,
+        show_builder_hint: bool,
     }
 
     let mut found: Option<StructInfo> = None;
@@ -235,17 +240,26 @@ pub fn structure_tooltip(
                 title: format!("Фабрика: {ft}"),
                 owner: *team,
                 production: Some(prod),
+                show_builder_hint: false,
             });
             break;
         }
     }
     if found.is_none() {
         for (tf, team) in &warbases {
-            if scout_tf.translation.xz().distance(tf.translation.xz()) < TOOLTIP_DIST {
+            let dist = scout_tf.translation.xz().distance(tf.translation.xz());
+            let in_tooltip = dist < TOOLTIP_DIST;
+            let in_builder = dist < crate::ui::builder_ui::BUILDER_RANGE;
+            if in_tooltip || (in_builder && *team == Team::Player) {
                 found = Some(StructInfo {
                     title: "Главная база".to_string(),
                     owner: *team,
-                    production: Some(("Общий".to_string(), "+5 Общий/день".to_string())),
+                    production: if in_tooltip {
+                        Some(("Общий".to_string(), "+5 Общий/день".to_string()))
+                    } else {
+                        None
+                    },
+                    show_builder_hint: *team == Team::Player,
                 });
                 break;
             }
@@ -277,6 +291,14 @@ pub fn structure_tooltip(
                         bevy_egui::egui::RichText::new(prod_text)
                             .small()
                             .color(bevy_egui::egui::Color32::from_rgb(160, 220, 160)),
+                    );
+                }
+                if info.show_builder_hint {
+                    ui.separator();
+                    ui.label(
+                        bevy_egui::egui::RichText::new("B — Строительство роботов")
+                            .small()
+                            .color(bevy_egui::egui::Color32::from_rgb(200, 200, 100)),
                     );
                 }
             });

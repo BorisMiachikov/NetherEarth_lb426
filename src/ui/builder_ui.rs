@@ -38,7 +38,7 @@ impl Default for BuilderUiState {
     }
 }
 
-const BUILDER_RANGE: f32 = 6.0;
+pub const BUILDER_RANGE: f32 = 6.0;
 
 /// Открывает/закрывает Builder UI по нажатию B рядом со своим варбейсом.
 /// Также закрывает меню, если игрок отошёл от базы.
