@@ -4,6 +4,7 @@ use bevy::prelude::*;
 
 use crate::{
     core::Team,
+    map::grid::MapGrid,
     robot::{builder::RobotBlueprint, bundle::spawn_robot, registry::ModuleRegistry},
 };
 
@@ -56,6 +57,7 @@ pub fn tick_production_queue(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     registry: Res<ModuleRegistry>,
+    map: Res<MapGrid>,
 ) {
     for (mut queue, tf, team) in &mut warbases {
         let Some(current_build_time) = queue.queue.front().map(|q| q.build_time) else {
@@ -78,6 +80,7 @@ pub fn tick_production_queue(
                 &registry,
                 *team,
                 spawn_pos,
+                &map,
             );
 
             info!("Робот построен у {:?} варбейса", team);

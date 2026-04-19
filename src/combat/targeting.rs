@@ -52,9 +52,15 @@ pub fn acquire_targets(
 
         match nearest {
             Some((target_e, _)) => {
+                if cur_target.map_or(true, |ct| ct.0 != target_e) {
+                    debug!("combat: {:?} → цель {:?}", entity, target_e);
+                }
                 commands.entity(entity).insert(CombatTarget(target_e));
             }
             None => {
+                if cur_target.is_some() {
+                    debug!("combat: {:?} потерял цель", entity);
+                }
                 commands.entity(entity).remove::<CombatTarget>();
             }
         }

@@ -67,6 +67,7 @@ fn save_scenario(editor: &EditorState) -> Result<(), String> {
         name: editor.map_name.clone(),
         description: editor.map_description.clone(),
         map_path: format!("data/maps/{}.ron", editor.file_name),
+        initial_resources: None,
     };
     let ron_str = format!(
         "(\n    name: {:?},\n    description: {:?},\n    map_path: {:?},\n)\n",

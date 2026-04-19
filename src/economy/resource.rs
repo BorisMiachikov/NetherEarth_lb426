@@ -1,6 +1,19 @@
 use std::{collections::HashMap, ops::{Deref, DerefMut}};
 
 use bevy::prelude::*;
+use serde::Deserialize;
+
+/// Начальные ресурсы, заданные сценарием. Поля опциональны — если не задано, берётся default.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScenarioInitialResources {
+    #[serde(default)] pub general:     Option<i32>,
+    #[serde(default)] pub chassis:     Option<i32>,
+    #[serde(default)] pub cannon:      Option<i32>,
+    #[serde(default)] pub missile:     Option<i32>,
+    #[serde(default)] pub phasers:     Option<i32>,
+    #[serde(default)] pub electronics: Option<i32>,
+    #[serde(default)] pub nuclear:     Option<i32>,
+}
 
 // ResourceType определён в core::events и ре-экспортируется здесь.
 pub use crate::core::events::ResourceType;
@@ -24,6 +37,19 @@ impl DerefMut for EnemyResources {
 }
 
 impl PlayerResources {
+    /// Создаёт PlayerResources из начальных ресурсов сценария, переопределяя defaults.
+    pub fn from_scenario(ir: &ScenarioInitialResources) -> Self {
+        let mut res = Self::with_starting_values();
+        if let Some(v) = ir.general     { res.stocks.insert(ResourceType::General, v); }
+        if let Some(v) = ir.chassis     { res.stocks.insert(ResourceType::Chassis, v); }
+        if let Some(v) = ir.cannon      { res.stocks.insert(ResourceType::Cannon, v); }
+        if let Some(v) = ir.missile     { res.stocks.insert(ResourceType::Missile, v); }
+        if let Some(v) = ir.phasers     { res.stocks.insert(ResourceType::Phasers, v); }
+        if let Some(v) = ir.electronics { res.stocks.insert(ResourceType::Electronics, v); }
+        if let Some(v) = ir.nuclear     { res.stocks.insert(ResourceType::Nuclear, v); }
+        res
+    }
+
     pub fn with_starting_values() -> Self {
         let mut stocks = HashMap::new();
         stocks.insert(ResourceType::General, 50);

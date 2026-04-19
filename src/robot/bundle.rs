@@ -132,8 +132,38 @@ pub fn spawn_robot(
     registry: &ModuleRegistry,
     team: Team,
     position: Vec3,
+    map: &crate::map::grid::MapGrid,
 ) -> Option<Entity> {
     blueprint.validate().ok()?;
+
+    // 12.20: chassis должен существовать в registry
+    debug_assert!(
+        registry.chassis(blueprint.chassis).is_some(),
+        "spawn_robot: chassis {:?} не найден в registry",
+        blueprint.chassis
+    );
+
+    // 12.21: валидация позиции по границам карты
+    let position = {
+        use crate::map::grid::CELL_SIZE;
+        debug_assert!(
+            map.world_to_grid(position).is_some(),
+            "spawn_robot: позиция {position:?} за пределами карты"
+        );
+        if map.world_to_grid(position).is_none() {
+            let max_x = map.width as f32 * CELL_SIZE - CELL_SIZE * 0.5;
+            let max_z = map.height as f32 * CELL_SIZE - CELL_SIZE * 0.5;
+            let clamped = Vec3::new(
+                position.x.clamp(CELL_SIZE * 0.5, max_x),
+                position.y,
+                position.z.clamp(CELL_SIZE * 0.5, max_z),
+            );
+            warn!("spawn_robot: позиция {position:?} за пределами карты, зажата до {clamped:?}");
+            clamped
+        } else {
+            position
+        }
+    };
 
     let chassis_def = registry.chassis(blueprint.chassis)?;
 

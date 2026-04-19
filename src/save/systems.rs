@@ -304,11 +304,13 @@ pub fn apply_pending_load(
     };
 
     // 1. Удалить все роботы
+    info!("Загрузка [1/7]: удаление {} роботов", robots_q.iter().count());
     for entity in &robots_q {
         commands.entity(entity).despawn();
     }
 
     // 2. Обновить структуры по позиции через MapGrid
+    info!("Загрузка [2/7]: восстановление {} фабрик, {} варбейсов", data.factories.len(), data.warbases.len());
     for saved_factory in &data.factories {
         let pos = Vec3::from(saved_factory.position);
         if let Some((gx, gy)) = map.world_to_grid(pos) {
@@ -322,6 +324,8 @@ pub fn apply_pending_load(
                         cp.progress = saved_factory.capture_progress;
                         cp.required = saved_factory.capture_required;
                     }
+                } else {
+                    warn!("apply_pending_load: stale entity {entity:?} в MapGrid ({gx},{gy})");
                 }
             }
         }
@@ -338,12 +342,15 @@ pub fn apply_pending_load(
                         mat.base_color = color;
                         mat.emissive = LinearRgba::from(color) * 0.3;
                     }
+                } else {
+                    warn!("apply_pending_load: stale warbase entity {entity:?} в MapGrid ({gx},{gy})");
                 }
             }
         }
     }
 
     // 3. Ресурсы игрока
+    info!("Загрузка [3/7]: ресурсы игрока");
     resources.stocks.insert(ResourceType::General,     data.resources.general);
     resources.stocks.insert(ResourceType::Chassis,     data.resources.chassis);
     resources.stocks.insert(ResourceType::Cannon,      data.resources.cannon);
@@ -353,22 +360,26 @@ pub fn apply_pending_load(
     resources.stocks.insert(ResourceType::Nuclear,     data.resources.nuclear);
 
     // 4. Игровое время
+    info!("Загрузка [4/7]: время (день {})", data.game_day);
     game_time.game_day        = data.game_day;
     game_time.day_elapsed     = data.day_elapsed;
     game_time.seconds_per_day = data.seconds_per_day;
 
     // 5. Состояние ИИ
+    info!("Загрузка [5/7]: состояние ИИ");
     ai.decision_timer   = data.ai.decision_timer;
     ai.build_timer      = data.ai.build_timer;
     ai.decision_counter = data.ai.decision_counter;
     ai.robots_built     = data.ai.robots_built;
 
     // 6. Позиция скаута
+    info!("Загрузка [6/7]: позиция скаута");
     if let Ok(mut scout_tf) = scout_q.single_mut() {
         scout_tf.translation = Vec3::from(data.scout_position);
     }
 
     // 7. Заспавнить роботов
+    info!("Загрузка [7/7]: спавн {} роботов", data.robots.len());
     for saved in &data.robots {
         let blueprint = RobotBlueprint {
             chassis: saved.chassis,
@@ -379,7 +390,7 @@ pub fn apply_pending_load(
         let pos = Vec3::from(saved.position);
         if let Some(entity) = spawn_robot(
             &mut commands, &mut meshes, &mut materials,
-            &blueprint, &registry, saved.team, pos,
+            &blueprint, &registry, saved.team, pos, &map,
         ) {
             // Восстановить HP
             let chassis_def = registry.chassis(saved.chassis);

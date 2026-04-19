@@ -63,6 +63,7 @@ pub fn ai_build_robots(
         enemy_res.spend_cost(&build_cost);
         queue.enqueue(blueprint.clone(), build_cost.build_time);
         ai.robots_built += 1;
+        debug!("AI: в очередь {:?} (всего построено: {})", blueprint.chassis, ai.robots_built);
         break;
     }
 }

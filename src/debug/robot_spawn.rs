@@ -74,12 +74,12 @@ pub fn robot_spawn_panel(
                     .with_weapon(ui_state.weapon);
                 let bp = if ui_state.has_electronics { bp.with_electronics() } else { bp };
                 let bp = if ui_state.has_nuclear { bp.with_nuclear() } else { bp };
-                spawn_robot(&mut commands, &mut meshes, &mut materials, &bp, &registry, Team::Player, pos);
+                spawn_robot(&mut commands, &mut meshes, &mut materials, &bp, &registry, Team::Player, pos, &map);
             }
             if ui.button("Спавн (Enemy)").clicked() {
                 let pos = scout.single().map(|t| t.translation).unwrap_or(Vec3::new(8.0, 0.0, 8.0));
                 let bp = RobotBlueprint::new(ui_state.chassis).with_weapon(ui_state.weapon);
-                spawn_robot(&mut commands, &mut meshes, &mut materials, &bp, &registry, Team::Enemy, pos);
+                spawn_robot(&mut commands, &mut meshes, &mut materials, &bp, &registry, Team::Enemy, pos, &map);
             }
         });
 

@@ -144,6 +144,11 @@ pub fn update_capture_progress(
             1 => {
                 let (&captor_team, &rate) = rates.iter().next().unwrap();
                 progress.progress += rate * time.delta_secs();
+                debug_assert!(
+                    progress.progress >= 0.0,
+                    "CaptureProgress.progress отрицательный: {}",
+                    progress.progress
+                );
                 if progress.is_captured() {
                     to_capture.push((struct_entity, captor_team, *struct_team));
                 }
