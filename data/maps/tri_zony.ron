@@ -1,0 +1,94 @@
+(
+    width: 64,
+    height: 64,
+    cells: [
+        // ── Горизонтальный пояс ям (разделяет север и центр) ──
+        (x: 2,  y: 20, cell_type: Pit), (x: 3,  y: 20, cell_type: Pit), (x: 4,  y: 20, cell_type: Pit),
+        (x: 5,  y: 20, cell_type: Pit), (x: 6,  y: 20, cell_type: Pit), (x: 7,  y: 20, cell_type: Pit),
+        (x: 8,  y: 20, cell_type: Pit), (x: 9,  y: 20, cell_type: Pit), (x: 10, y: 20, cell_type: Pit),
+        (x: 11, y: 20, cell_type: Pit), (x: 12, y: 20, cell_type: Pit), (x: 13, y: 20, cell_type: Pit),
+        (x: 14, y: 20, cell_type: Pit), (x: 15, y: 20, cell_type: Pit), (x: 16, y: 20, cell_type: Pit),
+        (x: 17, y: 20, cell_type: Pit), (x: 18, y: 20, cell_type: Pit), (x: 19, y: 20, cell_type: Pit),
+        // Переправа №1 — x 20..22
+        (x: 23, y: 20, cell_type: Pit), (x: 24, y: 20, cell_type: Pit), (x: 25, y: 20, cell_type: Pit),
+        (x: 26, y: 20, cell_type: Pit), (x: 27, y: 20, cell_type: Pit), (x: 28, y: 20, cell_type: Pit),
+        (x: 29, y: 20, cell_type: Pit), (x: 30, y: 20, cell_type: Pit), (x: 31, y: 20, cell_type: Pit),
+        // Переправа №2 — x 32..34
+        (x: 35, y: 20, cell_type: Pit), (x: 36, y: 20, cell_type: Pit), (x: 37, y: 20, cell_type: Pit),
+        (x: 38, y: 20, cell_type: Pit), (x: 39, y: 20, cell_type: Pit), (x: 40, y: 20, cell_type: Pit),
+        (x: 41, y: 20, cell_type: Pit), (x: 42, y: 20, cell_type: Pit), (x: 43, y: 20, cell_type: Pit),
+        (x: 44, y: 20, cell_type: Pit), (x: 45, y: 20, cell_type: Pit), (x: 46, y: 20, cell_type: Pit),
+        (x: 47, y: 20, cell_type: Pit), (x: 48, y: 20, cell_type: Pit), (x: 49, y: 20, cell_type: Pit),
+        (x: 50, y: 20, cell_type: Pit), (x: 51, y: 20, cell_type: Pit), (x: 52, y: 20, cell_type: Pit),
+        (x: 53, y: 20, cell_type: Pit), (x: 54, y: 20, cell_type: Pit), (x: 55, y: 20, cell_type: Pit),
+        (x: 56, y: 20, cell_type: Pit), (x: 57, y: 20, cell_type: Pit), (x: 58, y: 20, cell_type: Pit),
+        (x: 59, y: 20, cell_type: Pit), (x: 60, y: 20, cell_type: Pit), (x: 61, y: 20, cell_type: Pit),
+
+        // ── Горизонтальный пояс ям (разделяет центр и юг) ──
+        (x: 2,  y: 43, cell_type: Pit), (x: 3,  y: 43, cell_type: Pit), (x: 4,  y: 43, cell_type: Pit),
+        (x: 5,  y: 43, cell_type: Pit), (x: 6,  y: 43, cell_type: Pit), (x: 7,  y: 43, cell_type: Pit),
+        (x: 8,  y: 43, cell_type: Pit), (x: 9,  y: 43, cell_type: Pit), (x: 10, y: 43, cell_type: Pit),
+        (x: 11, y: 43, cell_type: Pit), (x: 12, y: 43, cell_type: Pit), (x: 13, y: 43, cell_type: Pit),
+        (x: 14, y: 43, cell_type: Pit), (x: 15, y: 43, cell_type: Pit), (x: 16, y: 43, cell_type: Pit),
+        (x: 17, y: 43, cell_type: Pit), (x: 18, y: 43, cell_type: Pit), (x: 19, y: 43, cell_type: Pit),
+        (x: 20, y: 43, cell_type: Pit), (x: 21, y: 43, cell_type: Pit), (x: 22, y: 43, cell_type: Pit),
+        (x: 23, y: 43, cell_type: Pit), (x: 24, y: 43, cell_type: Pit), (x: 25, y: 43, cell_type: Pit),
+        (x: 26, y: 43, cell_type: Pit), (x: 27, y: 43, cell_type: Pit), (x: 28, y: 43, cell_type: Pit),
+        // Переправа №3 — x 29..31
+        (x: 32, y: 43, cell_type: Pit), (x: 33, y: 43, cell_type: Pit), (x: 34, y: 43, cell_type: Pit),
+        (x: 35, y: 43, cell_type: Pit), (x: 36, y: 43, cell_type: Pit), (x: 37, y: 43, cell_type: Pit),
+        (x: 38, y: 43, cell_type: Pit), (x: 39, y: 43, cell_type: Pit), (x: 40, y: 43, cell_type: Pit),
+        (x: 41, y: 43, cell_type: Pit), (x: 42, y: 43, cell_type: Pit), (x: 43, y: 43, cell_type: Pit),
+        // Переправа №4 — x 44..46
+        (x: 47, y: 43, cell_type: Pit), (x: 48, y: 43, cell_type: Pit), (x: 49, y: 43, cell_type: Pit),
+        (x: 50, y: 43, cell_type: Pit), (x: 51, y: 43, cell_type: Pit), (x: 52, y: 43, cell_type: Pit),
+        (x: 53, y: 43, cell_type: Pit), (x: 54, y: 43, cell_type: Pit), (x: 55, y: 43, cell_type: Pit),
+        (x: 56, y: 43, cell_type: Pit), (x: 57, y: 43, cell_type: Pit), (x: 58, y: 43, cell_type: Pit),
+        (x: 59, y: 43, cell_type: Pit), (x: 60, y: 43, cell_type: Pit), (x: 61, y: 43, cell_type: Pit),
+
+        // ── Скалы у переправ (тактическое прикрытие) ──
+        (x: 19, y: 18, cell_type: Rock), (x: 19, y: 19, cell_type: Rock),
+        (x: 23, y: 18, cell_type: Rock), (x: 23, y: 19, cell_type: Rock),
+        (x: 19, y: 21, cell_type: Rock), (x: 19, y: 22, cell_type: Rock),
+        (x: 23, y: 21, cell_type: Rock), (x: 23, y: 22, cell_type: Rock),
+        (x: 31, y: 18, cell_type: Rock), (x: 31, y: 19, cell_type: Rock),
+        (x: 35, y: 18, cell_type: Rock), (x: 35, y: 19, cell_type: Rock),
+        (x: 31, y: 21, cell_type: Rock), (x: 31, y: 22, cell_type: Rock),
+        (x: 35, y: 21, cell_type: Rock), (x: 35, y: 22, cell_type: Rock),
+        (x: 28, y: 41, cell_type: Rock), (x: 28, y: 42, cell_type: Rock),
+        (x: 32, y: 41, cell_type: Rock), (x: 32, y: 42, cell_type: Rock),
+        (x: 28, y: 44, cell_type: Rock), (x: 28, y: 45, cell_type: Rock),
+        (x: 32, y: 44, cell_type: Rock), (x: 32, y: 45, cell_type: Rock),
+        (x: 43, y: 41, cell_type: Rock), (x: 43, y: 42, cell_type: Rock),
+        (x: 47, y: 41, cell_type: Rock), (x: 47, y: 42, cell_type: Rock),
+        (x: 43, y: 44, cell_type: Rock), (x: 43, y: 45, cell_type: Rock),
+        (x: 47, y: 44, cell_type: Rock), (x: 47, y: 45, cell_type: Rock),
+
+        // ── Песчаные поля в центральной зоне ──
+        (x: 28, y: 28, cell_type: Sand), (x: 29, y: 28, cell_type: Sand), (x: 30, y: 28, cell_type: Sand),
+        (x: 28, y: 29, cell_type: Sand), (x: 29, y: 29, cell_type: Sand), (x: 30, y: 29, cell_type: Sand),
+        (x: 34, y: 35, cell_type: Sand), (x: 35, y: 35, cell_type: Sand), (x: 36, y: 35, cell_type: Sand),
+        (x: 34, y: 36, cell_type: Sand), (x: 35, y: 36, cell_type: Sand), (x: 36, y: 36, cell_type: Sand),
+    ],
+    player_spawn: (x: 5, y: 5),
+    factories: [
+        // Северная зона — рядом с базой игрока
+        (x: 16, y: 8,  factory_type: Chassis,     team: Neutral),
+        (x: 8,  y: 12, factory_type: Electronics, team: Neutral),
+        (x: 30, y: 8,  factory_type: General,     team: Neutral),
+        // Центральная зона — высокая ценность, спорная
+        (x: 16, y: 30, factory_type: Cannon,      team: Neutral),
+        (x: 24, y: 26, factory_type: Missile,     team: Neutral),
+        (x: 32, y: 32, factory_type: Phasers,     team: Neutral),
+        (x: 40, y: 26, factory_type: General,     team: Neutral),
+        (x: 48, y: 30, factory_type: Cannon,      team: Neutral),
+        // Южная зона — рядом с базой врага
+        (x: 30, y: 56, factory_type: Chassis,     team: Neutral),
+        (x: 48, y: 52, factory_type: Nuclear,     team: Neutral),
+        (x: 54, y: 56, factory_type: General,     team: Neutral),
+    ],
+    warbases: [
+        (x: 8,  y: 8,  team: Player),
+        (x: 56, y: 56, team: Enemy),
+    ],
+)
