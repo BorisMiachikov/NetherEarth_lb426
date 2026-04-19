@@ -1,5 +1,5 @@
 use bevy::{
-    audio::{PlaybackMode, Volume},
+    audio::{AudioSink, PlaybackMode, Volume},
     prelude::*,
 };
 
@@ -129,6 +129,18 @@ fn on_unit_selected(
     play_sfx(&mut commands, sounds.select.clone(), settings.sfx_volume);
 }
 
+fn sync_music_volume(
+    settings: Res<AudioSettings>,
+    mut music: Query<&mut AudioSink, With<MusicPlayer>>,
+) {
+    if !settings.is_changed() {
+        return;
+    }
+    for mut sink in &mut music {
+        sink.set_volume(Volume::Linear(settings.music_volume));
+    }
+}
+
 pub struct AudioPlugin;
 
 impl Plugin for AudioPlugin {
@@ -139,7 +151,10 @@ impl Plugin for AudioPlugin {
             .add_systems(OnExit(AppState::Playing), stop_music)
             .add_systems(
                 Update,
-                on_unit_selected.run_if(in_state(AppState::Playing)),
+                (
+                    on_unit_selected.run_if(in_state(AppState::Playing)),
+                    sync_music_volume,
+                ),
             )
             .add_observer(on_shot)
             .add_observer(on_destroyed)

@@ -327,7 +327,7 @@ fn prepare_playtest(
 
     // Сбрасываем игровой мир (роботы, ресурсы, скаут, AI, время)
     // Цикл сброса структур в on_trigger_new_game не найдёт ничего в MapGrid → безопасно
-    commands.trigger(TriggerNewGame);
+    commands.trigger(TriggerNewGame { initial_resources: None });
 
     commands.insert_resource(EditorPlaytest);
     next_state.set(AppState::Playing);

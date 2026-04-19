@@ -1,13 +1,14 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts};
 
 use crate::{
     app::state::AppState,
+    audio::AudioSettings,
     localization::Localization,
     save::{io::autosave_info, systems::{TriggerLoadAutosave, TriggerNewGame}},
 };
 
-use super::scenario_picker::ScenarioList;
+use super::{scenario_picker::ScenarioList, settings::draw_settings};
 
 /// Система запуска: Loading → MainMenu.
 pub fn init_to_main_menu(mut next_state: ResMut<NextState<AppState>>) {
@@ -50,8 +51,12 @@ pub fn draw_main_menu(
     mut exit: MessageWriter<AppExit>,
     loc: Res<Localization>,
     mut commands: Commands,
+    mut audio: ResMut<AudioSettings>,
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
+    mut show_settings: Local<bool>,
 ) -> Result {
     if *state.get() != AppState::MainMenu {
+        *show_settings = false;
         return Ok(());
     }
 
@@ -79,12 +84,19 @@ pub fn draw_main_menu(
         )
         .show(ctx, |ui| {
             ui.set_width(260.0);
-            draw_title(ui, &loc);
-            ui.separator();
-            ui.add_space(6.0);
-            draw_scenario_picker(ui, &loc, &mut scenarios);
-            ui.add_space(14.0);
-            draw_menu_buttons(ui, &loc, &mut scenarios, &mut next_state, &mut exit, &mut commands);
+            if *show_settings {
+                let mut win = windows.single_mut().ok();
+                if draw_settings(ui, &loc, &mut audio, win.as_deref_mut(), &mut commands) {
+                    *show_settings = false;
+                }
+            } else {
+                draw_title(ui, &loc);
+                ui.separator();
+                ui.add_space(6.0);
+                draw_scenario_picker(ui, &loc, &mut scenarios);
+                ui.add_space(14.0);
+                draw_menu_buttons(ui, &loc, &mut scenarios, &mut next_state, &mut exit, &mut commands, &mut show_settings);
+            }
         });
 
     Ok(())
@@ -144,6 +156,7 @@ fn draw_menu_buttons(
     next_state: &mut NextState<AppState>,
     exit: &mut MessageWriter<AppExit>,
     commands: &mut Commands,
+    show_settings: &mut bool,
 ) {
     ui.vertical_centered(|ui| {
         if let Some(autosave_day) = autosave_info() {
@@ -156,15 +169,18 @@ fn draw_menu_buttons(
         }
 
         if ui.add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.new_game"))).clicked() {
-            commands.trigger(TriggerNewGame);
-            if let Some(ir) = scenarios.current().initial_resources.clone() {
-                commands.insert_resource(crate::economy::resource::PlayerResources::from_scenario(&ir));
-            }
+            commands.trigger(TriggerNewGame {
+                initial_resources: scenarios.current().initial_resources.clone(),
+            });
             next_state.set(AppState::Playing);
         }
         ui.add_space(8.0);
         if ui.add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.editor"))).clicked() {
             next_state.set(AppState::Editor);
+        }
+        ui.add_space(8.0);
+        if ui.add_sized([200.0, 38.0], egui::Button::new(loc.t("pause.settings"))).clicked() {
+            *show_settings = true;
         }
         ui.add_space(8.0);
         if ui.add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.quit"))).clicked() {

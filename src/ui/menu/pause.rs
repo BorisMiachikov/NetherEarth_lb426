@@ -1,12 +1,16 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, window::PrimaryWindow};
 use bevy_egui::{egui, EguiContexts};
 
 use crate::{
     app::state::AppState,
-    localization::{ChangeLanguage, Language, Localization},
+    audio::AudioSettings,
+    localization::Localization,
 };
 
-use super::save_slots::{draw_load_panel, draw_save_panel};
+use super::{
+    save_slots::{draw_load_panel, draw_save_panel},
+    settings::draw_settings,
+};
 
 /// Какая вкладка открыта в меню паузы.
 #[derive(Resource, Default, PartialEq, Eq, Clone, Copy)]
@@ -15,6 +19,7 @@ pub enum PauseSubPanel {
     None,
     Save,
     Load,
+    Settings,
 }
 
 /// Экран паузы (ESC во время игры).
@@ -27,6 +32,8 @@ pub fn draw_pause_menu(
     loc: Res<Localization>,
     mut sub_panel: Local<PauseSubPanel>,
     mut commands: Commands,
+    mut audio: ResMut<AudioSettings>,
+    mut windows: Query<&mut Window, With<PrimaryWindow>>,
 ) -> Result {
     if *state.get() != AppState::Paused {
         *sub_panel = PauseSubPanel::None;
@@ -68,10 +75,16 @@ pub fn draw_pause_menu(
                 ui.add_space(12.0);
             });
 
+            let mut win = windows.single_mut().ok();
             match *sub_panel {
                 PauseSubPanel::None => draw_pause_buttons(ui, &loc, &mut sub_panel, &mut time, &mut next_state, &mut exit, &mut commands),
                 PauseSubPanel::Save => draw_save_panel(ui, &loc, &mut sub_panel, &mut commands),
                 PauseSubPanel::Load => draw_load_panel(ui, &loc, &mut sub_panel, &mut commands, &mut time, &mut next_state),
+                PauseSubPanel::Settings => {
+                    if draw_settings(ui, &loc, &mut audio, win.as_deref_mut(), &mut commands) {
+                        *sub_panel = PauseSubPanel::None;
+                    }
+                }
             }
         });
 
@@ -100,6 +113,10 @@ fn draw_pause_buttons(
         if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.load"))).clicked() {
             *sub_panel = PauseSubPanel::Load;
         }
+        ui.add_space(4.0);
+        if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.settings"))).clicked() {
+            *sub_panel = PauseSubPanel::Settings;
+        }
         ui.add_space(6.0);
         if ui.add_sized([190.0, 34.0], egui::Button::new(loc.t("pause.main_menu"))).clicked() {
             time.unpause();
@@ -111,24 +128,6 @@ fn draw_pause_buttons(
             exit.write(AppExit::Success);
         }
         ui.add_space(10.0);
-
-        ui.separator();
-        ui.add_space(4.0);
-        ui.horizontal(|ui| {
-            ui.label(egui::RichText::new(loc.t("settings.language")).color(egui::Color32::GRAY).size(12.0));
-            ui.add_space(6.0);
-            for lang in [Language::Russian, Language::English] {
-                let active = loc.language == lang;
-                let btn = egui::Button::new(
-                    egui::RichText::new(lang.label())
-                        .color(if active { egui::Color32::from_rgb(80, 190, 255) } else { egui::Color32::GRAY }),
-                );
-                if ui.add_enabled(!active, btn).clicked() {
-                    commands.trigger(ChangeLanguage(lang));
-                }
-            }
-        });
-        ui.add_space(6.0);
 
         ui.separator();
         ui.label(egui::RichText::new(loc.t("pause.hint")).size(11.0).color(egui::Color32::DARK_GRAY));

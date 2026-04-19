@@ -36,9 +36,15 @@
     "gameover.quit": "✕  Quit",
 
     // Settings
+    "settings.title": "SETTINGS",
     "settings.language": "Language",
     "settings.music": "Music",
     "settings.sfx": "Sound FX",
+    "settings.audio": "Audio",
+    "settings.display": "Display",
+    "settings.resolution": "Resolution",
+    "settings.keybindings": "Keybindings",
+    "pause.settings": "⚙  Settings",
 
     // Commands
     "cmd.attack": "Attack",
