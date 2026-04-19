@@ -432,11 +432,14 @@ pub fn apply_pending_load(
 
 /// Сброс игрового мира до начального состояния (Новая игра).
 #[derive(Event, Debug)]
-pub struct TriggerNewGame;
+pub struct TriggerNewGame {
+    /// Начальные ресурсы из RON-сценария. None — дефолтные значения.
+    pub initial_resources: Option<crate::economy::resource::ScenarioInitialResources>,
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn on_trigger_new_game(
-    _trigger: On<TriggerNewGame>,
+    trigger: On<TriggerNewGame>,
     mut commands: Commands,
     robots_q: Query<Entity, With<RobotMarker>>,
     mut scout_q: Query<(&mut Transform, &mut crate::player::components::ScoutMovement), With<PlayerScout>>,
@@ -498,8 +501,11 @@ pub fn on_trigger_new_game(
         }
     }
 
-    // 3. Ресурсы игрока и ИИ
-    *resources = PlayerResources::with_starting_values();
+    // 3. Ресурсы игрока и ИИ (с учётом начальных ресурсов сценария)
+    *resources = match &trigger.event().initial_resources {
+        Some(ir) => PlayerResources::from_scenario(ir),
+        None     => PlayerResources::with_starting_values(),
+    };
     *enemy_resources = EnemyResources(PlayerResources::with_starting_values());
 
     // 4. Игровое время

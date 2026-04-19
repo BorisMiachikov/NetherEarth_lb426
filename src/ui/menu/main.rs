@@ -169,10 +169,9 @@ fn draw_menu_buttons(
         }
 
         if ui.add_sized([200.0, 38.0], egui::Button::new(loc.t("menu.new_game"))).clicked() {
-            commands.trigger(TriggerNewGame);
-            if let Some(ir) = scenarios.current().initial_resources.clone() {
-                commands.insert_resource(crate::economy::resource::PlayerResources::from_scenario(&ir));
-            }
+            commands.trigger(TriggerNewGame {
+                initial_resources: scenarios.current().initial_resources.clone(),
+            });
             next_state.set(AppState::Playing);
         }
         ui.add_space(8.0);
