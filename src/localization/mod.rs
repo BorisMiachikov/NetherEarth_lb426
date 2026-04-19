@@ -59,9 +59,14 @@ impl Localization {
         }
     }
 
-    /// Получить строку по ключу. Если не найдена — возвращает ключ.
+    /// Получить строку по ключу. Если не найдена — возвращает ключ (fallback).
     pub fn t<'a>(&'a self, key: &'a str) -> &'a str {
         self.strings.get(key).map(|s| s.as_str()).unwrap_or(key)
+    }
+
+    /// Alias для [`t`] — единый хелпер локализации с fallback на ключ.
+    pub fn get<'a>(&'a self, key: &'a str) -> &'a str {
+        self.t(key)
     }
 
     /// Сменить язык и перезагрузить строки.

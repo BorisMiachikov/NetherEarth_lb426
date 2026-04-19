@@ -207,6 +207,39 @@ pub fn on_structure_captured(
     );
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn capture_progress_accumulates() {
+        let mut cp = CaptureProgress::new(10.0);
+        cp.progress += 4.0;
+        assert!(!cp.is_captured());
+        cp.progress += 6.0;
+        assert!(cp.is_captured());
+    }
+
+    #[test]
+    fn capture_fraction_clamps_to_one() {
+        let mut cp = CaptureProgress::new(5.0);
+        cp.progress = 10.0; // за пределами
+        assert_eq!(cp.fraction(), 1.0);
+    }
+
+    #[test]
+    fn capture_fraction_zero_when_empty() {
+        let cp = CaptureProgress::new(10.0);
+        assert_eq!(cp.fraction(), 0.0);
+    }
+
+    #[test]
+    fn capture_required_is_positive() {
+        let cp = CaptureProgress::new(BASE_CAPTURE_TIME);
+        assert!(cp.required > 0.0);
+    }
+}
+
 /// Рисует прогресс-бар захвата над структурами (gizmos).
 pub fn draw_capture_progress(
     structures: Query<(&Transform, &CaptureProgress), With<Capturable>>,

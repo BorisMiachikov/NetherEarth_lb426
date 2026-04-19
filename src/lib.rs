@@ -8,6 +8,8 @@ mod command;
 mod core;
 #[cfg(feature = "debug_tools")]
 mod debug;
+#[cfg(feature = "dev")]
+mod dev_tools;
 mod economy;
 mod editor;
 pub mod localization;

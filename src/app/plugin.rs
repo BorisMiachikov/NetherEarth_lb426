@@ -63,5 +63,8 @@ impl Plugin for AppPlugin {
 
         #[cfg(feature = "debug_tools")]
         app.add_plugins(crate::debug::DebugPlugin);
+
+        #[cfg(feature = "dev")]
+        app.add_plugins(crate::dev_tools::DevHotReloadPlugin);
     }
 }
