@@ -90,10 +90,19 @@ ChangedMovementTarget → compute_path() → Path(VecDeque<Vec3>)
 
 AntiGrav шасси (`can_fly=true`) игнорирует заблокированные клетки.
 
+### Пространственный индекс (`spatial/`)
+
+`SpatialIndex` — uniform grid, обновляется раз в `FixedUpdate`. Используется:
+- `combat/targeting.rs` — `acquire_targets()` ищет врагов в радиусе
+- `movement/steering.rs` — `separate_robots()` находит соседей для расталкивания
+- `ai/command.rs` — ближайшие враги/фабрики для AI-решений
+
+Это устраняет O(n²) перебор при ≥50 роботах.
+
 ### Боевая система (`combat/`)
 
 ```
-acquire_targets() → CombatTarget(Entity)
+acquire_targets() → CombatTarget(Entity)     ← через SpatialIndex
     ↓
 fire_weapons()
     ├── Cannon/Phasers → EntityDamaged observer (hitscan)
@@ -102,11 +111,20 @@ fire_weapons()
               move_projectiles() → EntityDamaged при попадании
 ```
 
+Цель пересчитывается только при смерти текущей или выходе за радиус.
 Все в `FixedUpdate`, только в `Playing`.
 
 ### AI (`ai/`)
 
-**Utility-based scoring** с FSM состояниями:
+**Utility-based scoring** с FSM состояниями. Модули:
+
+| Файл | Содержание |
+|------|------------|
+| `ai/build.rs` | `ai_build_robots` — очередь постройки, тратит `EnemyResources` |
+| `ai/command.rs` | `ai_assign_commands` — SeekAndCapture/SeekAndDestroy/DestroyBase |
+| `ai/scoring.rs` | `select_blueprint`, `capture_priority`, `threat_ratio` |
+| `ai/victory.rs` | проверка победы/поражения |
+| `ai/state.rs` | `AICommander` ресурс, `GameResult` |
 
 ```
 AICommander (Decision loop каждые decision_interval сек)
@@ -114,14 +132,14 @@ AICommander (Decision loop каждые decision_interval сек)
 Utility scoring:
   capture_priority  = нейтральные фабрики / угрозы
   threat_ratio      = вражеские роботы / свои роботы
-  select_blueprint  = выбор конфигурации по ресурсам
+  select_blueprint  = выбор конфигурации по counter % 10
 
-→ ai_build_robots (очередь на Enemy warbase)
+→ ai_build_robots (очередь на Enemy warbase, с расходом EnemyResources)
 → ai_assign_commands (idle роботы → SeekAndCapture/SeekAndDestroy)
 → Ядерная стратегия при ≥N фабриках
 ```
 
-ИИ использует ту же экономику, что и игрок — без читов.
+ИИ использует `EnemyResources` — ту же экономику, что и игрок, без читов.
 
 ### Структуры (`structure/`)
 
@@ -242,10 +260,12 @@ Observers:
 
 - Формат: RON (человекочитаемый)
 - 3 именованных слота + автосохранение (`saves/autosave.ron`)
-- Версионирование: `SAVE_VERSION = 1`
+- Версионирование: `SAVE_VERSION = 2`, миграция через `migrate_v1_to_v2()`
 - Автосохранение при смене игрового дня (`check_autosave` в FixedUpdate)
 
 `SaveData` содержит: все роботы (компоненты), структуры (владелец, прогресс захвата), ресурсы игрока и врага, `GameTime`, позицию скаута, состояние AI-командира.
+
+`apply_pending_load` разбит на этапы (7 шагов с `info!` логами). `warn!` при stale entity в `MapGrid`.
 
 ---
 
@@ -284,8 +304,12 @@ configs/
 
 ```toml
 [features]
-dev         = ["bevy/dynamic_linking"]  # быстрая перекомпиляция
+dev         = ["bevy/dynamic_linking"]  # быстрая перекомпиляция + hot-reload конфигов
 debug_tools = []                         # debug overlay, robot spawn panel
 ```
 
-В release-сборке `debug_tools` отключены через `#[cfg(feature = "debug_tools")]`.
+- `dev` — добавляет `DevHotReloadPlugin` (`src/dev_tools/`): polling mtime каждые 2с,
+  при изменении перезагружает `GameConfig` и `ModuleRegistry` без рестарта.
+- `debug_tools` — панель спавна роботов, FPS overlay, debug gizmos.
+
+В release-сборке оба флага не включаются.
