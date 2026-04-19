@@ -2,7 +2,8 @@ use bevy::prelude::*;
 
 use crate::{
     command::command::RobotCommand,
-    core::Team,
+    core::{health::Health, Team},
+    map::grid::CELL_SIZE,
     movement::{exploration_target, velocity::MovementTarget},
     robot::components::{Nuclear, RobotMarker, VisionRange},
     structure::{capture::Capturable, warbase::Warbase},
@@ -12,6 +13,15 @@ use super::{
     scoring::{capture_priority, threat_ratio},
     state::{AICommander, GameResult},
 };
+
+/// Порог HP (доля от максимума), ниже которого робот начинает отступать.
+const RETREAT_THRESHOLD: f32 = 0.3;
+/// Дистанция точки бегства от ближайшего врага.
+const FLEE_DISTANCE: f32 = 15.0;
+
+/// Маркер: робот сейчас отступает (HP ниже порога, враг рядом).
+#[derive(Component)]
+pub struct Retreating;
 
 /// Периодически назначает приказы простаивающим роботам ИИ.
 pub fn ai_assign_commands(
@@ -134,13 +144,63 @@ pub fn update_seek_destroy(
     }
 }
 
+/// Заставляет роботов с HP ниже порога отступать от ближайшего врага.
+/// Роботы с приказом SeekAndDestroy — не отступают.
+pub fn update_retreat(
+    mut commands: Commands,
+    robots: Query<
+        (Entity, &RobotCommand, &Transform, &Team, &VisionRange, &Health),
+        With<RobotMarker>,
+    >,
+    retreating: Query<Entity, (With<RobotMarker>, With<Retreating>)>,
+    all_robots: Query<(Entity, &Transform, &Team), With<RobotMarker>>,
+    map: Res<crate::map::grid::MapGrid>,
+) {
+    let map_max_x = map.width as f32 * CELL_SIZE - CELL_SIZE * 0.5;
+    let map_max_z = map.height as f32 * CELL_SIZE - CELL_SIZE * 0.5;
+
+    for (entity, cmd, tf, team, vision, health) in &robots {
+        if matches!(cmd, RobotCommand::SeekAndDestroy(_)) {
+            continue;
+        }
+
+        let robot_pos = tf.translation;
+        let hp_ratio = health.current / health.max;
+
+        if hp_ratio >= RETREAT_THRESHOLD {
+            if retreating.contains(entity) {
+                commands.entity(entity).remove::<Retreating>();
+            }
+            continue;
+        }
+
+        let nearest_enemy = all_robots
+            .iter()
+            .filter(|(e, _, t)| *e != entity && **t != *team)
+            .filter(|(_, t, _)| robot_pos.distance(t.translation) <= vision.0)
+            .min_by_key(|(_, t, _)| (robot_pos.distance(t.translation) * 100.0) as u32)
+            .map(|(_, t, _)| t.translation);
+
+        if let Some(enemy_pos) = nearest_enemy {
+            let flee_dir = (robot_pos - enemy_pos).normalize_or_zero();
+            let flee_target = Vec3::new(
+                (robot_pos.x + flee_dir.x * FLEE_DISTANCE).clamp(CELL_SIZE * 0.5, map_max_x),
+                robot_pos.y,
+                (robot_pos.z + flee_dir.z * FLEE_DISTANCE).clamp(CELL_SIZE * 0.5, map_max_z),
+            );
+            commands.entity(entity).try_insert((Retreating, MovementTarget(flee_target)));
+            info!("[Retreat] {:?} бежит (HP {:.0}%)", entity, hp_ratio * 100.0);
+        }
+    }
+}
+
 /// Направляет роботов с приказом DestroyEnemyBase к вражескому варбейсу.
 /// Варбейс должен быть в радиусе видимости — иначе исследует карту.
 pub fn seek_destroy_base(
     mut commands: Commands,
     mut robots: Query<
         (Entity, &mut RobotCommand, &Transform, &Team, &Nuclear, &VisionRange, Option<&MovementTarget>),
-        With<RobotMarker>,
+        (With<RobotMarker>, Without<Retreating>),
     >,
     warbases: Query<(Entity, &Transform, &Team), With<Warbase>>,
     map: Res<crate::map::grid::MapGrid>,

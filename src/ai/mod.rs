@@ -7,7 +7,7 @@ pub mod victory;
 use bevy::prelude::*;
 
 use build::ai_build_robots;
-use command::{ai_assign_commands, arm_nuclear_on_arrival, seek_destroy_base, update_seek_destroy};
+use command::{ai_assign_commands, arm_nuclear_on_arrival, seek_destroy_base, update_retreat, update_seek_destroy};
 use state::{load_ai_config, AICommander, GameResult};
 use victory::check_victory_defeat;
 
@@ -29,6 +29,7 @@ impl Plugin for AiPlugin {
                     update_seek_destroy,
                     seek_destroy_base,
                     arm_nuclear_on_arrival,
+                    update_retreat,
                 )
                     .run_if(in_state(AppState::Playing)),
             );

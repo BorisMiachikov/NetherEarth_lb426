@@ -314,7 +314,7 @@ Bevy Events для межсистемного общения:
 - [x] **5.9** Бонус электроники к fire rate `[S]`
 - [x] **5.10** `combat/visuals.rs` — MuzzleFlash gizmo-линии, оранжевые сферы ракет `[M]`
 - [x] **5.11** SeekAndDestroy + targeting = полноценный бой `[M]`
-- [ ] **5.12** Combat AI (отступление по порогу здоровья) `[M]` *(Phase 7)*
+- [x] **5.12** Combat AI (отступление по порогу здоровья) `[M]` *(Phase 7)*
 - [x] **5.13** acquire_targets + fire_weapons + move_projectiles в FixedUpdate `[S]`
 
 **Критерии проверки:**

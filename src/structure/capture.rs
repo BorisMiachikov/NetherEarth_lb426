@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use bevy::prelude::*;
 
 use crate::{
+    ai::command::Retreating,
     command::command::RobotCommand,
     core::{events::StructureCaptured, Team},
     movement::{exploration_target, velocity::MovementTarget},
@@ -60,7 +61,7 @@ pub fn seek_capture_navigation(
     mut commands: Commands,
     mut robots: Query<
         (Entity, &mut RobotCommand, &Transform, &Team, &VisionRange, Option<&MovementTarget>),
-        With<RobotMarker>,
+        (With<RobotMarker>, Without<Retreating>),
     >,
     capturable: Query<(Entity, &Transform, &Team), (With<Capturable>, With<CaptureProgress>)>,
     map: Res<crate::map::grid::MapGrid>,
