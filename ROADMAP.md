@@ -484,7 +484,7 @@ Bevy Events для межсистемного общения:
 - [x] **10.8** Debug-инструменты за feature flag `debug_tools`, выключены в release `[S]`
 - [x] **10.9** Справка по клавишам (in-game overlay, F1) `[S]`
 - [ ] **10.10** Windows release build: `cargo build --release`, тест на чистой системе `[M]`
-- [ ] **10.11** README, LICENSE `[S]`
+- [x] **10.11** README, LICENSE `[S]`
 - [x] **10.12** Edge-cases: застревание роботов (StuckDetector), пересчёт пути, дрожание камеры (lerp) `[L]`
 - [x] **10.13** Орбитальное вращение камеры (MMB + Z/C), WASD относительно угла камеры `[S]`
 
