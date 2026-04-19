@@ -3,7 +3,7 @@
 **Стек:** Rust (Stable), Bevy 0.18, Serde + RON  
 **Тип:** Solo-разработка  
 **Дата создания:** 2026-04-04  
-**Последнее обновление:** 2026-04-18 — Фаза 12.A+B завершена (12.1–12.11): 0 warnings, локализация, рефакторинг save, тесты  
+**Последнее обновление:** 2026-04-19 — Фаза 12 завершена полностью (12.1–12.27): debug-логи, инварианты, валидация spawn, CI, 9+ новых тестов, hot-reload  
 **Авторитетная спецификация:** `1/Nether Earth LB426.md` (v2.0)  
 **Документация:** [README](README.md) · [Архитектура](docs/ARCHITECTURE.md) · [Геймплей](docs/GAMEPLAY.md) · [Редактор](docs/EDITOR.md) · [План улучшений](docs/IMPROVEMENTS_PLAN.md)
 
@@ -595,18 +595,18 @@ Bevy Events для межсистемного общения:
 
 #### 12.E — Полировка и надёжность `[1–1.5 дня]`
 
-- [ ] **12.19** Debug-логирование: `combat/targeting` при смене цели, `ai/systems` выбранный blueprint, `apply_pending_load` поэтапные `info!` `[S]`
-- [ ] **12.20** Инварианты через `debug_assert!`: Robot ровно один Chassis при спавне, `MapGrid::Structure(e)` → e жив, `CaptureProgress.progress ∈ [0, required]` `[S]`
-- [ ] **12.21** Валидация границ карты в `spawn_robot()`: `debug_assert!(map.contains_world(pos))`; release-кламп + `warn!` `[S]`
+- [x] **12.19** Debug-логирование: `combat/targeting` при смене цели, `ai/systems` выбранный blueprint, `apply_pending_load` поэтапные `info!` `[S]`
+- [x] **12.20** Инварианты через `debug_assert!`: Robot ровно один Chassis при спавне, `MapGrid::Structure(e)` → e жив, `CaptureProgress.progress ∈ [0, required]` `[S]`
+- [x] **12.21** Валидация границ карты в `spawn_robot()`: `debug_assert!(map.contains_world(pos))`; release-кламп + `warn!` `[S]`
 - [x] **12.22** Graceful degradation аудио: отсутствие .wav → один `warn!` при старте, не spam в кадре выстрела `[S]`
-- [ ] **12.23** RON hot-reload за feature `dev`: `RonAssetPlugin` + AssetEvent-observer обновляет `ModuleRegistry`/`GameConfig` без рестарта `[M]`
-- [ ] **12.24** Унифицированный хелпер локализации: `t!(key)` или `localization.get(key)` с fallback на ключ `[S]`
-- [ ] **12.25** Обновить in-game keymap overlay (F1) под orbit (MMB+Z/C) и Editor `[S]`
+- [x] **12.23** RON hot-reload за feature `dev`: `RonAssetPlugin` + AssetEvent-observer обновляет `ModuleRegistry`/`GameConfig` без рестарта `[M]`
+- [x] **12.24** Унифицированный хелпер локализации: `t!(key)` или `localization.get(key)` с fallback на ключ `[S]`
+- [x] **12.25** Обновить in-game keymap overlay (F1) под orbit (MMB+Z/C) и Editor `[S]`
 
 #### 12.F — CI и качество `[0.5 дня]`
 
-- [ ] **12.26** GitHub Actions: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` на push/PR `[M]`
-- [ ] **12.27** Расширить тестовое покрытие: сценарий захвата, pathfinding edge cases, AI decision (≥5 новых юнит-тестов) `[M]`
+- [x] **12.26** GitHub Actions: `cargo fmt --check`, `cargo clippy --all-targets -- -D warnings`, `cargo test` на push/PR `[M]`
+- [x] **12.27** Расширить тестовое покрытие: сценарий захвата, pathfinding edge cases, AI decision (≥5 новых юнит-тестов) `[M]`
 
 **Критерии проверки:**
 - `cargo clippy --all-targets -- -D warnings` — ноль предупреждений
