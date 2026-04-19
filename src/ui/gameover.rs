@@ -4,6 +4,7 @@ use bevy_egui::{egui, EguiContexts};
 use crate::{
     ai::state::{GameOutcome, GameResult},
     app::state::AppState,
+    localization::Localization,
 };
 
 /// Отображает экран победы / поражения.
@@ -13,6 +14,7 @@ pub fn draw_gameover_screen(
     mut next_state: ResMut<NextState<AppState>>,
     mut time: ResMut<Time<Virtual>>,
     mut exit: MessageWriter<AppExit>,
+    loc: Res<Localization>,
 ) -> Result {
     let Some(outcome) = result.outcome else {
         return Ok(());
@@ -31,13 +33,13 @@ pub fn draw_gameover_screen(
                 .rect_filled(screen, 0.0, egui::Color32::from_black_alpha(160));
         });
 
-    let (title, title_color) = match outcome {
+    let (title_key, title_color) = match outcome {
         GameOutcome::PlayerWin => (
-            "ПОБЕДА",
+            "gameover.victory",
             egui::Color32::from_rgb(80, 220, 80),
         ),
         GameOutcome::PlayerLose => (
-            "ПОРАЖЕНИЕ",
+            "gameover.defeat",
             egui::Color32::from_rgb(220, 60, 60),
         ),
     };
@@ -58,7 +60,7 @@ pub fn draw_gameover_screen(
             ui.vertical_centered(|ui| {
                 ui.add_space(12.0);
                 ui.label(
-                    egui::RichText::new(title)
+                    egui::RichText::new(loc.t(title_key))
                         .color(title_color)
                         .size(38.0)
                         .strong(),
@@ -71,20 +73,20 @@ pub fn draw_gameover_screen(
                     .num_columns(2)
                     .spacing([32.0, 6.0])
                     .show(ui, |ui| {
-                        ui.label("Прошло дней:");
+                        ui.label(loc.t("gameover.days"));
                         ui.label(
                             egui::RichText::new(format!("{}", result.game_days)).strong(),
                         );
                         ui.end_row();
 
-                        ui.label("Фабрики игрока:");
+                        ui.label(loc.t("gameover.your_factories"));
                         ui.label(
                             egui::RichText::new(format!("{}", result.player_factories))
                                 .color(egui::Color32::from_rgb(60, 140, 255)),
                         );
                         ui.end_row();
 
-                        ui.label("Фабрики врага:");
+                        ui.label(loc.t("gameover.enemy_factories"));
                         ui.label(
                             egui::RichText::new(format!("{}", result.enemy_factories))
                                 .color(egui::Color32::from_rgb(220, 60, 60)),
@@ -95,7 +97,7 @@ pub fn draw_gameover_screen(
                 ui.add_space(20.0);
 
                 if ui
-                    .add_sized([200.0, 36.0], egui::Button::new("⌂  Главное меню"))
+                    .add_sized([200.0, 36.0], egui::Button::new(loc.t("gameover.main_menu")))
                     .clicked()
                 {
                     time.unpause();
@@ -103,7 +105,7 @@ pub fn draw_gameover_screen(
                 }
                 ui.add_space(8.0);
                 if ui
-                    .add_sized([200.0, 36.0], egui::Button::new("✕  Выход"))
+                    .add_sized([200.0, 36.0], egui::Button::new(loc.t("gameover.quit")))
                     .clicked()
                 {
                     exit.write(AppExit::Success);

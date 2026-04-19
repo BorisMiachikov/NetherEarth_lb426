@@ -7,18 +7,19 @@ use crate::{
         production::{FACTORY_GENERAL_BONUS, FACTORY_SPECIFIC_PER_DAY, WARBASE_GENERAL_PER_DAY},
         resource::{PlayerResources, ResourceType},
     },
+    localization::Localization,
     structure::{capture::Capturable, factory::Factory, warbase::Warbase, FactType},
 };
 
-/// (тип ресурса, метка, emoji)
+/// (тип ресурса, ключ локализации, emoji)
 const RESOURCE_META: &[(ResourceType, &str, &str)] = &[
-    (ResourceType::General,     "Общий",      "⬡"),
-    (ResourceType::Chassis,     "Шасси",      "⬜"),
-    (ResourceType::Cannon,      "Пушки",      "⦿"),
-    (ResourceType::Missile,     "Ракеты",     "↑"),
-    (ResourceType::Phasers,     "Фазеры",     "~"),
-    (ResourceType::Electronics, "Электроника","⚙"),
-    (ResourceType::Nuclear,     "Ядерный",    "☢"),
+    (ResourceType::General,     "ui.resource.general",     "⬡"),
+    (ResourceType::Chassis,     "ui.resource.chassis",     "⬜"),
+    (ResourceType::Cannon,      "ui.resource.cannon",      "⦿"),
+    (ResourceType::Missile,     "ui.resource.missile",     "↑"),
+    (ResourceType::Phasers,     "ui.resource.phasers",     "~"),
+    (ResourceType::Electronics, "ui.resource.electronics", "⚙"),
+    (ResourceType::Nuclear,     "ui.resource.nuclear",     "☢"),
 ];
 
 /// Цвет количества ресурса: красный (мало) → жёлтый → зелёный.
@@ -85,6 +86,7 @@ pub fn draw_resource_hud(
     enemy_factories: Query<&Team, With<Factory>>,
     warbases: Query<&Team, With<Warbase>>,
     mut contexts: EguiContexts,
+    loc: Res<Localization>,
 ) -> Result {
     let ctx = contexts.ctx_mut()?;
 
@@ -100,7 +102,7 @@ pub fn draw_resource_hud(
         },
     );
 
-    egui::Window::new("Ресурсы")
+    egui::Window::new(loc.t("hud.title"))
         .id(egui::Id::new("resource_hud"))
         .default_pos([10.0, 10.0])
         .resizable(false)
@@ -109,7 +111,7 @@ pub fn draw_resource_hud(
             // --- Заголовок: день + счёт фабрик ---
             ui.horizontal(|ui| {
                 ui.label(
-                    egui::RichText::new(format!("День {}", game_time.game_day))
+                    egui::RichText::new(format!("{} {}", loc.t("hud.day"), game_time.game_day))
                         .strong()
                         .color(egui::Color32::from_rgb(200, 200, 200)),
                 );
@@ -139,9 +141,10 @@ pub fn draw_resource_hud(
                 .num_columns(3)
                 .spacing([8.0, 3.0])
                 .show(ui, |ui| {
-                    for (i, (rt, label, icon)) in RESOURCE_META.iter().enumerate() {
+                    for (i, (rt, label_key, icon)) in RESOURCE_META.iter().enumerate() {
                         let amount = player_res.get(*rt);
                         let day_prod = prod[i];
+                        let label = loc.t(label_key);
 
                         // Иконка + метка
                         ui.label(
@@ -159,7 +162,7 @@ pub fn draw_resource_hud(
                         // Производство в день (только если есть)
                         if day_prod > 0 {
                             ui.label(
-                                egui::RichText::new(format!("+{day_prod}/д"))
+                                egui::RichText::new(format!("+{day_prod}{}", loc.t("hud.per_day_suffix")))
                                     .color(egui::Color32::from_rgb(80, 180, 80))
                                     .small(),
                             );

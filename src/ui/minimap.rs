@@ -4,6 +4,7 @@ use bevy_egui::{egui, EguiContexts};
 use crate::{
     app::state::AppState,
     core::Team,
+    localization::Localization,
     map::grid::{MapGrid, CELL_SIZE},
     player::components::PlayerScout,
     robot::components::RobotMarker,
@@ -21,6 +22,7 @@ pub fn draw_minimap(
     robots: Query<(&Transform, &Team), With<RobotMarker>>,
     factories: Query<(&Transform, &Team), (With<Factory>, Without<RobotMarker>)>,
     warbases: Query<(&Transform, &Team), (With<Warbase>, Without<RobotMarker>)>,
+    loc: Res<Localization>,
 ) -> Result {
     // Миникарта видна только во время игры и паузы
     if !matches!(
@@ -37,7 +39,7 @@ pub fn draw_minimap(
     let scale_x = MAP_PX / map_w;
     let scale_z = MAP_PX / map_h;
 
-    egui::Window::new("Карта")
+    egui::Window::new(loc.t("minimap.title"))
         .id(egui::Id::new("minimap"))
         .anchor(egui::Align2::RIGHT_BOTTOM, egui::vec2(-10.0, -10.0))
         .resizable(false)

@@ -6,8 +6,6 @@ use bevy::prelude::*;
 
 use systems::{process_commands, update_patrol};
 
-pub use command::RobotCommand;
-pub use queue::CommandQueue;
 
 use crate::app::state::AppState;
 

@@ -22,7 +22,7 @@ pub fn fire_weapons(
 ) {
     let dt = time.delta_secs();
 
-    for (entity, tf, slots, mut cooldowns, combat_target, team, electronics) in &mut query {
+    for (entity, tf, slots, mut cooldowns, combat_target, _team, electronics) in &mut query {
         let reload_mult = match electronics {
             Some(e) => 1.0 - e.fire_rate_bonus,
             None => 1.0,
@@ -64,7 +64,6 @@ pub fn fire_weapons(
                             target: combat_target.0,
                             damage: weapon.damage,
                             speed: 8.0,
-                            owner_team: *team,
                         },
                         Transform::from_translation(tf.translation + Vec3::Y * 0.5),
                     ));

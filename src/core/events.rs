@@ -12,6 +12,7 @@ pub struct EntityDamaged {
 
 /// Сущность уничтожена (HP достигло 0).
 #[derive(Event, Debug)]
+#[allow(dead_code)]
 pub struct EntityDestroyed {
     pub entity: Entity,
     pub team: Team,
@@ -27,6 +28,7 @@ pub struct StructureCaptured {
 
 /// Ресурс изменился.
 #[derive(Event, Debug)]
+#[allow(dead_code)]
 pub struct ResourceChanged {
     pub team: Team,
     pub resource_type: ResourceType,

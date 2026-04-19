@@ -30,18 +30,3 @@ impl std::fmt::Display for FactoryType {
 #[derive(Component)]
 pub struct Factory;
 
-/// Скорость производства ресурсов (за игровой день).
-#[derive(Component, Debug, Clone)]
-pub struct ProductionRate {
-    pub resource_per_day: u32,
-    pub general_per_day: u32,
-}
-
-impl Default for ProductionRate {
-    fn default() -> Self {
-        Self {
-            resource_per_day: 5,
-            general_per_day: 2,
-        }
-    }
-}

@@ -14,7 +14,6 @@ pub struct RobotBlueprint {
 
 #[derive(Debug, PartialEq, Eq)]
 pub enum ValidationError {
-    NoChassis,
     TooManyWeapons,
     NoWeapons,
 }
@@ -22,7 +21,6 @@ pub enum ValidationError {
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ValidationError::NoChassis => write!(f, "Шасси обязательно"),
             ValidationError::TooManyWeapons => write!(f, "Максимум 3 оружия"),
             ValidationError::NoWeapons => write!(f, "Нужно хотя бы 1 оружие"),
         }
@@ -50,11 +48,6 @@ impl RobotBlueprint {
 
     pub fn with_weapon(mut self, wt: WeaponType) -> Self {
         self.weapons.push(wt);
-        self
-    }
-
-    pub fn with_electronics(mut self) -> Self {
-        self.has_electronics = true;
         self
     }
 

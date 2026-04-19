@@ -219,7 +219,6 @@ pub fn spawn_robot(
         team,
         crate::movement::velocity::Velocity::default(),
         crate::command::command::RobotCommand::Idle,
-        crate::command::queue::CommandQueue::default(),
         crate::movement::steering::CurrentPath::default(),
         Pickable::default(),
         Mesh3d(mesh),

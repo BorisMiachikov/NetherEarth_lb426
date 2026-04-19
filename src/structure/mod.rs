@@ -18,7 +18,7 @@ use capture::{
     draw_capture_progress, on_structure_captured, seek_capture_navigation,
     update_capture_progress, CaptureProgress, Capturable,
 };
-use factory::{Factory, FactoryType, ProductionRate};
+use factory::{Factory, FactoryType};
 use warbase::{draw_production_progress, tick_production_queue, ProductionQueue, Warbase};
 
 pub use factory::FactoryType as FactType;
@@ -112,7 +112,6 @@ pub fn spawn_structures_system(
                 Name::new(format!("Factory {:?}", ft)),
                 Factory,
                 ft,
-                ProductionRate::default(),
                 Capturable,
                 CaptureProgress::new(1.0),
                 team_to_core(&def.team),

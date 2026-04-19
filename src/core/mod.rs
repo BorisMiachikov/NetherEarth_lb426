@@ -12,11 +12,8 @@ use time::{tick_game_time, GameTime};
 
 use crate::app::state::AppState;
 
-pub use events::{EntityDamaged, EntityDestroyed, ResourceChanged, ResourceType, StructureCaptured};
 pub use health::Health;
-pub use resources::GameConfig;
 pub use team::Team;
-pub use time::GameTime as GameTimeClock;
 
 pub struct CorePlugin;
 

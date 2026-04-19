@@ -7,6 +7,7 @@ use super::time::GameTime;
 
 /// Конфигурация игры, загружаемая из `configs/game.ron`.
 #[derive(Resource, Debug, Clone, Deserialize)]
+#[allow(dead_code)]
 pub struct GameConfig {
     /// Секунд реального времени в одном игровом дне.
     pub seconds_per_day: f32,

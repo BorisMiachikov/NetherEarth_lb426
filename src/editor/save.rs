@@ -1,5 +1,5 @@
 use crate::map::loader::{
-    CellTypeDef, FactoryDef, GridPos, MapCellDef, MapData, WarbaseDef,
+    GridPos, MapCellDef, MapData,
 };
 use crate::map::grid::{CellType, MapGrid};
 use crate::ui::menu::ScenarioDef;
@@ -54,7 +54,7 @@ pub fn save_map(editor: &EditorState, grid: &MapGrid) -> Result<String, String> 
 
     let _ = std::fs::create_dir_all("data/maps");
     let path = format!("data/maps/{}.ron", editor.file_name);
-    std::fs::write(&path, ron_str).map_err(|e| format!("Ошибка записи {path}: {e}"))?;
+    std::fs::write(&path, ron_str).map_err(|e| format!("Write error {path}: {e}"))?;
 
     // Обновляем/создаём сценарий
     save_scenario(editor)?;
@@ -75,7 +75,7 @@ fn save_scenario(editor: &EditorState) -> Result<(), String> {
     );
     let _ = std::fs::create_dir_all("data/scenarios");
     let path = format!("data/scenarios/{}.ron", editor.file_name);
-    std::fs::write(&path, ron_str).map_err(|e| format!("Ошибка записи сценария {path}: {e}"))?;
+    std::fs::write(&path, ron_str).map_err(|e| format!("Write error (scenario) {path}: {e}"))?;
     Ok(())
 }
 

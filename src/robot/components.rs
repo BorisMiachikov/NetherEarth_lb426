@@ -12,6 +12,7 @@ pub enum ChassisType {
 }
 
 impl ChassisType {
+    #[allow(dead_code)]
     pub fn can_fly(self) -> bool {
         matches!(self, ChassisType::AntiGrav)
     }
@@ -50,6 +51,7 @@ pub struct Chassis {
     pub chassis_type: ChassisType,
     pub base_hp: f32,
     pub speed: f32,
+    #[allow(dead_code)]
     pub mobility: f32,
 }
 
@@ -60,6 +62,7 @@ pub struct WeaponSlots {
 }
 
 impl WeaponSlots {
+    #[allow(dead_code)]
     pub fn empty() -> Self {
         Self {
             slots: [None, None, None],
@@ -85,6 +88,7 @@ impl WeaponSlots {
 
 /// Электроника (опциональный модуль).
 #[derive(Component, Debug, Clone)]
+#[allow(dead_code)]
 pub struct Electronics {
     pub radar_range: f32,
     pub accuracy_bonus: f32,
@@ -107,6 +111,7 @@ impl Default for Electronics {
 #[derive(Component, Debug, Clone)]
 pub struct Nuclear {
     pub blast_radius: f32,
+    #[allow(dead_code)]
     pub detonation_delay: f32,
     pub armed: bool,
 }

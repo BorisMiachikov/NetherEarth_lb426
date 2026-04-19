@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::core::{events::EntityDamaged, Team};
+use crate::core::events::EntityDamaged;
 
 /// Ракета, летящая к цели с самонаведением.
 #[derive(Component, Debug)]
@@ -8,7 +8,6 @@ pub struct Projectile {
     pub target: Entity,
     pub damage: f32,
     pub speed: f32,
-    pub owner_team: Team,
 }
 
 /// Двигает снаряды к целям. При достижении наносит урон и уничтожает снаряд.

@@ -23,7 +23,7 @@ use crate::{
 use camera::{free_camera_movement, reset_camera_for_editor, EditorCamera};
 use picking::pick_cell;
 use state::EditorState;
-use terrain::{on_rebuild_terrain_cell, RebuildTerrainCell};
+use terrain::on_rebuild_terrain_cell;
 use tools::{apply_tool, update_hover_preview};
 use ui::{draw_editor_toolbox, draw_editor_map_props};
 
@@ -237,7 +237,7 @@ fn draw_exit_dialog(
         .order(egui::Order::Background)
         .interactable(false)
         .show(ctx, |ui| {
-            let screen = ctx.screen_rect();
+            let screen = ctx.content_rect();
             ui.painter().rect_filled(screen, 0.0, egui::Color32::from_black_alpha(160));
         });
 
@@ -251,7 +251,7 @@ fn draw_exit_dialog(
             ui.add_space(12.0);
             ui.horizontal(|ui| {
                 if ui.button(loc.t("editor.dialog.save_exit")).clicked() {
-                    if let Some(err) = editor.validate() {
+                    if let Some(err) = editor.validate(&loc) {
                         editor.show_validation_error = Some(err);
                         editor.show_exit_dialog = false;
                     } else {
@@ -295,11 +295,12 @@ fn prepare_playtest(
     structures_q: Query<Entity, Or<(With<Factory>, With<Warbase>)>>,
     mut commands: Commands,
     mut next_state: ResMut<NextState<AppState>>,
+    loc: Res<crate::localization::Localization>,
 ) {
     if !std::mem::take(&mut editor.play_test_requested) {
         return;
     }
-    if let Some(err) = editor.validate() {
+    if let Some(err) = editor.validate(&loc) {
         editor.show_validation_error = Some(err);
         return;
     }

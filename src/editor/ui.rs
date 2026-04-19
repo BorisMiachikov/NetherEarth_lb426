@@ -2,7 +2,6 @@ use bevy::prelude::*;
 use bevy_egui::{egui, EguiContexts};
 
 use crate::{
-    app::state::AppState,
     localization::Localization,
     map::{grid::MapGrid, loader::{CellTypeDef, FactoryTypeDef, TeamDef}},
 };
@@ -91,14 +90,15 @@ pub fn draw_editor_toolbox(
                 if editor.current_tool == EditorTool::PlaceFactory {
                     ui.add_space(4.0);
                     ui.label(egui::RichText::new(loc.t("editor.section.factory_type")).small().color(egui::Color32::GRAY));
-                    for (ft, label) in [
-                        (FactoryTypeDef::Chassis,     "⚙ Шасси"),
-                        (FactoryTypeDef::Cannon,      "💣 Пушка"),
-                        (FactoryTypeDef::Missile,     "🚀 Ракета"),
-                        (FactoryTypeDef::Phasers,     "⚡ Фазеры"),
-                        (FactoryTypeDef::Electronics, "📡 Электроника"),
-                        (FactoryTypeDef::Nuclear,     "☢ Ядерное"),
+                    for (ft, emoji, key) in [
+                        (FactoryTypeDef::Chassis,     "⚙",  "ui.resource.chassis"),
+                        (FactoryTypeDef::Cannon,      "💣", "ui.resource.cannon"),
+                        (FactoryTypeDef::Missile,     "🚀", "ui.resource.missile"),
+                        (FactoryTypeDef::Phasers,     "⚡", "ui.resource.phasers"),
+                        (FactoryTypeDef::Electronics, "📡", "ui.resource.electronics"),
+                        (FactoryTypeDef::Nuclear,     "☢",  "ui.resource.nuclear"),
                     ] {
+                        let label = format!("{emoji} {}", loc.t(key));
                         let selected = std::mem::discriminant(&editor.factory_type)
                             == std::mem::discriminant(&ft);
                         if ui.selectable_label(selected, label).clicked() {
@@ -143,7 +143,7 @@ pub fn draw_editor_toolbox(
             }
             let dirty_mark = if editor.dirty { " *" } else { "" };
             if ui.button(format!("{}{dirty_mark}", loc.t("editor.btn.save"))).clicked() {
-                if let Some(err) = editor.validate() {
+                if let Some(err) = editor.validate(&loc) {
                     editor.show_validation_error = Some(err);
                 } else {
                     match save_map(&editor, &grid) {
@@ -162,7 +162,7 @@ pub fn draw_editor_toolbox(
             ui.separator();
 
             // --- Тестовый запуск ---
-            let can_play = editor.validate().is_none();
+            let can_play = editor.validate(&loc).is_none();
             if ui
                 .add_enabled(can_play, egui::Button::new(loc.t("editor.btn.test")).fill(egui::Color32::from_rgb(30, 100, 30)))
                 .clicked()
@@ -313,8 +313,8 @@ pub fn draw_editor_map_props(
             let enemy_wb  = editor.warbases.iter().filter(|w| matches!(w.team, TeamDef::Enemy)).count();
             let neutral_f = editor.factories.iter().filter(|f| matches!(f.team, TeamDef::Neutral)).count();
 
-            ui.label(format!("{} {player_wb} ВБ", loc.t("editor.props.player_wb")));
-            ui.label(format!("{} {enemy_wb} ВБ", loc.t("editor.props.enemy_wb")));
+            ui.label(format!("{} {player_wb}", loc.t("editor.props.player_wb")));
+            ui.label(format!("{} {enemy_wb}", loc.t("editor.props.enemy_wb")));
             ui.label(format!("{} {neutral_f}", loc.t("editor.props.neutral_f")));
 
             let spawn = editor.player_spawn;
@@ -340,7 +340,7 @@ pub fn draw_editor_map_props(
             ui.separator();
 
             // --- Валидация в реальном времени ---
-            if let Some(err) = editor.validate() {
+            if let Some(err) = editor.validate(&loc) {
                 ui.colored_label(egui::Color32::RED, format!("⚠ {err}"));
             } else {
                 ui.colored_label(egui::Color32::GREEN, loc.t("editor.props.valid"));

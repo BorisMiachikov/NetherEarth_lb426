@@ -8,7 +8,6 @@ use crate::map::{
 use super::{
     state::{EditorAction, EditorState, EditorTool, PlacedStructureKind},
     terrain::rebuild_terrain_cell,
-    EditorEntity,
 };
 
 /// Применяет активный инструмент по клику ЛКМ.
@@ -74,8 +73,6 @@ pub fn apply_tool(
                 };
                 editor.push_action(EditorAction::StructurePlaced {
                     kind: PlacedStructureKind::Factory(def.clone()),
-                    x: cx,
-                    y: cy,
                 });
                 editor.factories.push(def);
             }
@@ -89,8 +86,6 @@ pub fn apply_tool(
                 };
                 editor.push_action(EditorAction::StructurePlaced {
                     kind: PlacedStructureKind::Warbase(def.clone()),
-                    x: cx,
-                    y: cy,
                 });
                 editor.warbases.push(def);
             }
@@ -149,8 +144,6 @@ fn erase_at(editor: &mut EditorState, cx: u32, cy: u32) {
         let removed = editor.factories.remove(idx);
         editor.push_action(EditorAction::StructureRemoved {
             kind: PlacedStructureKind::Factory(removed),
-            x: cx,
-            y: cy,
         });
         return;
     }
@@ -159,8 +152,6 @@ fn erase_at(editor: &mut EditorState, cx: u32, cy: u32) {
         let removed = editor.warbases.remove(idx);
         editor.push_action(EditorAction::StructureRemoved {
             kind: PlacedStructureKind::Warbase(removed),
-            x: cx,
-            y: cy,
         });
     }
 }

@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use production::{tick_production, LastProductionDay};
 
-pub use resource::{EnemyResources, PlayerResources, ResourceType};
+pub use resource::{EnemyResources, PlayerResources};
 
 use crate::app::state::AppState;
 

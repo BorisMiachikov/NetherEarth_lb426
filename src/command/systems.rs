@@ -53,7 +53,7 @@ pub fn update_patrol(
     entities: Query<Entity, With<RobotMarker>>,
 ) {
     for entity in &entities {
-        let Ok((mut cmd, tf, target)) = query.get_mut(entity) else { continue };
+        let Ok((cmd, tf, target)) = query.get_mut(entity) else { continue };
 
         let RobotCommand::Patrol(ref points) = *cmd else { continue };
         if points.is_empty() { continue; }

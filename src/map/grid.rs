@@ -120,16 +120,6 @@ impl MapGrid {
         self.get(x, y).map(|c| c.is_passable()).unwrap_or(false)
     }
 
-    pub fn world_bounds(&self) -> (Vec3, Vec3) {
-        let min = Vec3::ZERO;
-        let max = Vec3::new(
-            self.width as f32 * CELL_SIZE,
-            0.0,
-            self.height as f32 * CELL_SIZE,
-        );
-        (min, max)
-    }
-
     /// Итератор по всем ячейкам: ((x, y), CellType).
     pub fn iter_cells(&self) -> impl Iterator<Item = ((u32, u32), CellType)> + '_ {
         (0..self.height).flat_map(move |y| {

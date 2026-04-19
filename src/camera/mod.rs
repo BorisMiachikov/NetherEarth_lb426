@@ -4,7 +4,6 @@ use bevy::prelude::*;
 
 use systems::{follow_target, rotate_camera, spawn_camera, zoom_camera};
 
-pub use systems::{CameraTarget, IsometricCamera};
 
 use crate::app::state::AppState;
 

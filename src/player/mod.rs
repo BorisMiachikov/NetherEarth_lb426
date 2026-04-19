@@ -17,7 +17,6 @@ use systems::{move_manual_control_robot, move_scout, spawn_scout, sync_manual_co
 
 use crate::app::state::AppState;
 
-pub use components::{ManualControl, PlayerScout, ScoutMoveIntent, ScoutMovement};
 pub use selection::Selected;
 
 pub struct PlayerPlugin;

@@ -46,6 +46,83 @@
     "cmd.defend": "Держать",
     "cmd.stop": "Стоп",
 
+    // HUD
+    "hud.title": "Ресурсы",
+    "hud.day": "День",
+    "hud.per_day_suffix": "/д",
+
+    // Типы ресурсов
+    "ui.resource.general": "Общий",
+    "ui.resource.chassis": "Шасси",
+    "ui.resource.cannon": "Пушки",
+    "ui.resource.missile": "Ракеты",
+    "ui.resource.phasers": "Фазеры",
+    "ui.resource.electronics": "Электроника",
+    "ui.resource.nuclear": "Ядерный",
+
+    // Типы шасси
+    "ui.chassis.wheels": "Колёса",
+    "ui.chassis.bipod": "Бипод",
+    "ui.chassis.tracks": "Гусеницы",
+    "ui.chassis.antigrav": "АнтиГрав",
+
+    // Типы оружия
+    "ui.weapon.cannon": "Пушка",
+    "ui.weapon.missile": "Ракета",
+    "ui.weapon.phasers": "Фазеры",
+
+    // Builder UI
+    "builder.title": "Строительство робота",
+    "builder.section.chassis": "Шасси",
+    "builder.section.weapons": "Оружие (до 3 слотов)",
+    "builder.slot_label": "Слот",
+    "builder.section.modules": "Модули",
+    "builder.module.electronics": "Электроника (+точность, +скор. огня, -время захвата)",
+    "builder.module.nuclear": "Ядерный заряд (уничтожает всё в R=8)",
+    "builder.section.cost": "Стоимость",
+    "builder.col.resource": "Ресурс",
+    "builder.col.need": "Нужно",
+    "builder.col.have": "Есть",
+    "builder.time_label": "Время постройки",
+    "builder.unit.sec": "с",
+    "builder.error.insufficient": "Недостаточно ресурсов",
+    "builder.btn.build": "Построить",
+    "builder.btn.close": "Закрыть",
+
+    // Справка по клавишам
+    "help.title": "Управление  [F1]",
+    "help.section.scout": "Скаут",
+    "help.section.selection": "Выбор роботов",
+    "help.section.commands": "Команды роботов",
+    "help.section.build": "Строительство",
+    "help.section.other": "Прочее",
+    "help.key.wasd": "Движение скаута",
+    "help.key.qe": "Снизить / поднять высоту",
+    "help.key.scroll": "Зум камеры",
+    "help.key.lmb": "Выбрать робота",
+    "help.key.shift_lmb": "Добавить к выбору",
+    "help.key.ctrl_num": "Сохранить группу",
+    "help.key.num": "Выбрать группу",
+    "help.key.rmb": "Двигаться к точке",
+    "help.key.p_rmb": "Патруль (2 точки)",
+    "help.key.b": "Открыть Builder (рядом с варбейсом)",
+    "help.key.esc": "Пауза / Продолжить",
+    "help.key.f1": "Показать / скрыть справку",
+    "help.btn.close": "Закрыть [F1]",
+
+    // Миникарта
+    "minimap.title": "Карта",
+
+    // Меню
+    "menu.btn.back": "← Назад",
+    "scenario.default.name": "Стандартная схватка",
+    "scenario.default.description": "8 нейтральных фабрик.",
+
+    // Редактор — ошибки валидации
+    "editor.error.no_player_wb": "Необходим хотя бы один варбейс Игрока",
+    "editor.error.no_enemy_wb": "Необходим хотя бы один варбейс Врага",
+    "editor.error.spawn_oob": "Точка спавна за пределами карты",
+
     // Редактор — панель инструментов
     "editor.title": "Редактор карты",
     "editor.section.tool": "Инструмент",

@@ -1,6 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use super::types::SaveData;
+use super::types::{SaveData, SAVE_VERSION};
 
 pub const SAVES_DIR: &str = "saves";
 pub const AUTOSAVE_FILE: &str = "saves/autosave.ron";
@@ -16,14 +16,29 @@ fn ensure_saves_dir() {
 pub fn write_save(path: &Path, data: &SaveData) -> Result<(), String> {
     ensure_saves_dir();
     let content = ron::ser::to_string_pretty(data, ron::ser::PrettyConfig::default())
-        .map_err(|e| format!("Ошибка сериализации: {e}"))?;
-    std::fs::write(path, content).map_err(|e| format!("Ошибка записи файла: {e}"))
+        .map_err(|e| format!("Serialization error: {e}"))?;
+    std::fs::write(path, content).map_err(|e| format!("Write error: {e}"))
 }
 
 pub fn read_save(path: &Path) -> Result<SaveData, String> {
     let content = std::fs::read_to_string(path)
-        .map_err(|e| format!("Не удалось прочитать файл сохранения: {e}"))?;
-    ron::from_str(&content).map_err(|e| format!("Ошибка парсинга сохранения: {e}"))
+        .map_err(|e| format!("Failed to read save file: {e}"))?;
+    let data: SaveData = ron::from_str(&content)
+        .map_err(|e| format!("Failed to parse save: {e}"))?;
+    migrate_save(data)
+}
+
+/// Версионирование: проверяет совместимость и применяет миграции.
+fn migrate_save(data: SaveData) -> Result<SaveData, String> {
+    if data.version > SAVE_VERSION {
+        return Err(format!(
+            "Save version {} is newer than supported {}",
+            data.version, SAVE_VERSION
+        ));
+    }
+    // v1 — текущая версия, миграция не нужна.
+    // При добавлении v2: match data.version { 1 => migrate_v1_to_v2(data), _ => Ok(data) }
+    Ok(data)
 }
 
 pub fn slot_exists(slot: usize) -> bool {
@@ -86,10 +101,45 @@ mod tests {
     fn serialize_deserialize_roundtrip() {
         let data = dummy_save();
         let ron_str = ron::ser::to_string_pretty(&data, ron::ser::PrettyConfig::default())
-            .expect("сериализация");
-        let loaded: SaveData = ron::from_str(&ron_str).expect("десериализация");
+            .expect("serialization");
+        let loaded: SaveData = ron::from_str(&ron_str).expect("deserialization");
         assert_eq!(loaded.game_day, 5);
         assert_eq!(loaded.resources.general, 50);
         assert!((loaded.day_elapsed - 10.0).abs() < 1e-4);
+    }
+
+    #[test]
+    fn future_version_rejected() {
+        let mut data = dummy_save();
+        data.version = SAVE_VERSION + 1;
+        let ron_str = ron::ser::to_string_pretty(&data, ron::ser::PrettyConfig::default())
+            .expect("serialization");
+        let path = std::env::temp_dir().join("ne_test_future_ver.ron");
+        std::fs::write(&path, ron_str).expect("write");
+        let result = read_save(&path);
+        let _ = std::fs::remove_file(&path);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("newer than supported"));
+    }
+
+    #[test]
+    fn corrupt_ron_rejected() {
+        let path = std::env::temp_dir().join("ne_test_corrupt.ron");
+        std::fs::write(&path, "this is not valid RON {{{").expect("write");
+        let result = read_save(&path);
+        let _ = std::fs::remove_file(&path);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn file_roundtrip() {
+        let data = dummy_save();
+        let path = std::env::temp_dir().join("ne_test_roundtrip.ron");
+        write_save(&path, &data).expect("write");
+        let loaded = read_save(&path).expect("read");
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(loaded.game_day, data.game_day);
+        assert_eq!(loaded.resources.chassis, data.resources.chassis);
+        assert_eq!(loaded.version, SAVE_VERSION);
     }
 }

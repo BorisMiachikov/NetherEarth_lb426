@@ -11,7 +11,7 @@ use systems::{
 
 use crate::app::state::AppState;
 
-pub use systems::{TriggerLoad, TriggerLoadAutosave, TriggerNewGame, TriggerSave};
+pub use systems::TriggerNewGame;
 pub use types::SAVE_SLOT_COUNT;
 
 pub struct SavePlugin;

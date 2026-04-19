@@ -1,6 +1,9 @@
 use bevy::prelude::*;
 
-use crate::map::loader::{CellTypeDef, FactoryDef, FactoryTypeDef, TeamDef, WarbaseDef};
+use crate::{
+    localization::Localization,
+    map::loader::{CellTypeDef, FactoryDef, FactoryTypeDef, TeamDef, WarbaseDef},
+};
 
 // ---------------------------------------------------------------------------
 // Инструменты редактора
@@ -56,13 +59,9 @@ pub enum EditorAction {
     },
     StructurePlaced {
         kind: PlacedStructureKind,
-        x: u32,
-        y: u32,
     },
     StructureRemoved {
         kind: PlacedStructureKind,
-        x: u32,
-        y: u32,
     },
     PlayerSpawnMoved {
         from: (u32, u32),
@@ -226,19 +225,19 @@ impl EditorState {
     }
 
     /// Валидирует карту перед сохранением. Возвращает сообщение об ошибке или None.
-    pub fn validate(&self) -> Option<String> {
+    pub fn validate(&self, loc: &Localization) -> Option<String> {
         let has_player_wb = self.warbases.iter().any(|w| matches!(w.team, TeamDef::Player));
         let has_enemy_wb  = self.warbases.iter().any(|w| matches!(w.team, TeamDef::Enemy));
         if !has_player_wb {
-            return Some("Необходим хотя бы один варбейс Игрока".into());
+            return Some(loc.t("editor.error.no_player_wb").to_owned());
         }
         if !has_enemy_wb {
-            return Some("Необходим хотя бы один варбейс Врага".into());
+            return Some(loc.t("editor.error.no_enemy_wb").to_owned());
         }
         let size = self.map_size.value();
         let (sx, sy) = self.player_spawn;
         if sx >= size || sy >= size {
-            return Some(format!("Точка спавна ({sx},{sy}) за пределами карты {size}×{size}"));
+            return Some(format!("{} ({sx},{sy}): {size}×{size}", loc.t("editor.error.spawn_oob")));
         }
         None
     }

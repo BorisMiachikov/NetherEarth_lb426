@@ -11,9 +11,6 @@ use systems::recalc_stats;
 
 use crate::app::state::AppState;
 
-pub use builder::RobotBlueprint;
-pub use components::ChassisType;
-pub use registry::ModuleRegistry as Registry;
 
 pub struct RobotPlugin;
 

@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
 };
 
-use crate::camera::systems::{IsometricCamera, ZOOM_DEFAULT, ZOOM_MAX, ZOOM_MIN, ZOOM_SPEED};
+use crate::camera::systems::{IsometricCamera, ZOOM_MAX, ZOOM_MIN, ZOOM_SPEED};
 
 const CAMERA_PITCH_DEG: f32 = -35.264;
 const CAMERA_DISTANCE: f32  = 40.0;

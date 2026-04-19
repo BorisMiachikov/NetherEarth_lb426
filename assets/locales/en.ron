@@ -46,6 +46,83 @@
     "cmd.defend": "Defend",
     "cmd.stop": "Stop",
 
+    // HUD
+    "hud.title": "Resources",
+    "hud.day": "Day",
+    "hud.per_day_suffix": "/d",
+
+    // Resource type labels
+    "ui.resource.general": "General",
+    "ui.resource.chassis": "Chassis",
+    "ui.resource.cannon": "Cannon",
+    "ui.resource.missile": "Missiles",
+    "ui.resource.phasers": "Phasers",
+    "ui.resource.electronics": "Electronics",
+    "ui.resource.nuclear": "Nuclear",
+
+    // Chassis type labels
+    "ui.chassis.wheels": "Wheels",
+    "ui.chassis.bipod": "Bipod",
+    "ui.chassis.tracks": "Tracks",
+    "ui.chassis.antigrav": "AntiGrav",
+
+    // Weapon type labels
+    "ui.weapon.cannon": "Cannon",
+    "ui.weapon.missile": "Missile",
+    "ui.weapon.phasers": "Phasers",
+
+    // Builder UI
+    "builder.title": "Robot Builder",
+    "builder.section.chassis": "Chassis",
+    "builder.section.weapons": "Weapons (up to 3 slots)",
+    "builder.slot_label": "Slot",
+    "builder.section.modules": "Modules",
+    "builder.module.electronics": "Electronics (+accuracy, +fire rate, -capture time)",
+    "builder.module.nuclear": "Nuclear (destroys everything in R=8)",
+    "builder.section.cost": "Cost",
+    "builder.col.resource": "Resource",
+    "builder.col.need": "Need",
+    "builder.col.have": "Have",
+    "builder.time_label": "Build time",
+    "builder.unit.sec": "s",
+    "builder.error.insufficient": "Insufficient resources",
+    "builder.btn.build": "Build",
+    "builder.btn.close": "Close",
+
+    // Help overlay
+    "help.title": "Controls  [F1]",
+    "help.section.scout": "Scout",
+    "help.section.selection": "Robot Selection",
+    "help.section.commands": "Robot Commands",
+    "help.section.build": "Construction",
+    "help.section.other": "Other",
+    "help.key.wasd": "Scout movement",
+    "help.key.qe": "Lower / raise altitude",
+    "help.key.scroll": "Camera zoom",
+    "help.key.lmb": "Select robot",
+    "help.key.shift_lmb": "Add to selection",
+    "help.key.ctrl_num": "Save group",
+    "help.key.num": "Select group",
+    "help.key.rmb": "Move to point",
+    "help.key.p_rmb": "Patrol (2 points)",
+    "help.key.b": "Open Builder (near warbase)",
+    "help.key.esc": "Pause / Continue",
+    "help.key.f1": "Show / hide help",
+    "help.btn.close": "Close [F1]",
+
+    // Minimap
+    "minimap.title": "Map",
+
+    // Menu
+    "menu.btn.back": "← Back",
+    "scenario.default.name": "Standard Battle",
+    "scenario.default.description": "8 neutral factories.",
+
+    // Editor — validation errors
+    "editor.error.no_player_wb": "At least one Player warbase is required",
+    "editor.error.no_enemy_wb": "At least one Enemy warbase is required",
+    "editor.error.spawn_oob": "Spawn point is outside the map",
+
     // Editor — toolbox
     "editor.title": "Level Editor",
     "editor.section.tool": "Tool",

@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use serde::Deserialize;
 
-use super::components::{ChassisType, WeaponData, WeaponType};
+use super::components::{ChassisType, WeaponType};
 
 // ── RON-определения ──────────────────────────────────────────────────────────
 

@@ -10,7 +10,6 @@ use loader::{load_map_from_ron, MapSpawnPoints, MapStructures};
 
 use crate::app::state::AppState;
 
-pub use grid::{CellType as TerrainCell, MapGrid as Map, CELL_SIZE};
 
 /// Маркер: terrain-меш конкретной ячейки. Используется редактором для замены меша.
 #[derive(Component, Debug, Clone, Copy)]

@@ -24,7 +24,28 @@
       "Bash(cargo tree:*)",
       "Bash(nether_earth\")",
       "Bash(grep -v \"^warning: unused\\\\|^warning: variable\\\\|^warning: `nether_earth\")",
-      "Bash(wait:*)"
+      "Bash(wait:*)",
+      "Bash(git push *)",
+      "Bash(find \"F:\\\\Project\\\\rust\\\\nether_earth\\\\src\" -name \"*.rs\" -exec grep -l \"struct.*\\\\|enum\" {} \\\\;)",
+      "Bash(mv \"F:/Project/rust/nether_earth/assets/models\"/* \"F:/Project/rust/nether_earth/references/models/\")",
+      "Bash(mv \"F:/Project/rust/nether_earth/assets/textures\"/* \"F:/Project/rust/nether_earth/references/textures/\")",
+      "Bash(cargo doc *)",
+      "Read(//c/Users/lb426/.cargo/registry/src/**)",
+      "Bash(find src *)",
+      "Bash(xargs -I {} bash -c \"echo '=== {} ===' && grep -A 10 '#\\\\[cfg\\(test\\)\\\\]' {}\")",
+      "Bash(grep -v \":0$\")",
+      "Bash(cat src/localization.rs)",
+      "Bash(find src/ -name \"*.rs\" -exec grep -l \"pub struct Localization\\\\|pub fn t\\(\" {} \\\\;)",
+      "Bash(grep \"src\\\\\\\\\")",
+      "Bash(python3 -c 'import struct; d=open\\('\\\\''__TRACKED_VAR__'\\\\'','\\\\''rb'\\\\''\\).read\\(36\\); print\\(struct.unpack_from\\('\\\\''<H'\\\\'',d,20\\)[0]\\)')",
+      "Bash(python -c 'import struct; d=open\\('\\\\''__TRACKED_VAR__'\\\\'','\\\\''rb'\\\\''\\).read\\(36\\); print\\(struct.unpack_from\\('\\\\''<H'\\\\'',d,20\\)[0]\\)')",
+      "Bash(python3 -c ' *)",
+      "Bash(ffmpeg -version)",
+      "Bash(where ffmpeg *)",
+      "Bash(winget list *)",
+      "Bash(cmd /c \"where ffmpeg\")",
+      "Bash(cmd /c \"where ffmpeg 2>&1\")",
+      "Bash(powershell -Command \"Get-Command ffmpeg -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source; \\(Get-Item 'C:/ffmpeg/bin/ffmpeg.exe','C:/Program Files/ffmpeg/bin/ffmpeg.exe','C:/tools/ffmpeg/bin/ffmpeg.exe' -ErrorAction SilentlyContinue\\).FullName\")"
     ]
   }
 }

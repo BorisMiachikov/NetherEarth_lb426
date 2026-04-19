@@ -4,6 +4,7 @@ use bevy_egui::{egui, EguiContexts};
 use crate::{
     core::{events::ResourceChanged, Team},
     economy::resource::{PlayerResources, ResourceType},
+    localization::Localization,
     player::components::PlayerScout,
     robot::{
         builder::RobotBlueprint,
@@ -152,33 +153,33 @@ fn can_afford(costs: &[(ResourceType, u32)], res: &PlayerResources) -> bool {
     costs.iter().all(|(rt, amount)| res.get(*rt) >= *amount as i32)
 }
 
-fn resource_label(rt: ResourceType) -> &'static str {
+fn resource_label_key(rt: ResourceType) -> &'static str {
     match rt {
-        ResourceType::General => "Общий",
-        ResourceType::Chassis => "Шасси",
-        ResourceType::Cannon => "Пушки",
-        ResourceType::Missile => "Ракеты",
-        ResourceType::Phasers => "Фазеры",
-        ResourceType::Electronics => "Электроника",
-        ResourceType::Nuclear => "Ядерный",
+        ResourceType::General     => "ui.resource.general",
+        ResourceType::Chassis     => "ui.resource.chassis",
+        ResourceType::Cannon      => "ui.resource.cannon",
+        ResourceType::Missile     => "ui.resource.missile",
+        ResourceType::Phasers     => "ui.resource.phasers",
+        ResourceType::Electronics => "ui.resource.electronics",
+        ResourceType::Nuclear     => "ui.resource.nuclear",
     }
 }
 
-fn chassis_label(ct: ChassisType) -> &'static str {
+fn chassis_label_key(ct: ChassisType) -> &'static str {
     match ct {
-        ChassisType::Wheels => "Колёса",
-        ChassisType::Bipod => "Бипод",
-        ChassisType::Tracks => "Гусеницы",
-        ChassisType::AntiGrav => "АнтиГрав",
+        ChassisType::Wheels   => "ui.chassis.wheels",
+        ChassisType::Bipod    => "ui.chassis.bipod",
+        ChassisType::Tracks   => "ui.chassis.tracks",
+        ChassisType::AntiGrav => "ui.chassis.antigrav",
     }
 }
 
-fn weapon_label(wt: Option<WeaponType>) -> &'static str {
+fn weapon_label_key(wt: Option<WeaponType>) -> &'static str {
     match wt {
-        None => "---",
-        Some(WeaponType::Cannon) => "Пушка",
-        Some(WeaponType::Missile) => "Ракета",
-        Some(WeaponType::Phasers) => "Фазеры",
+        None                        => "---",
+        Some(WeaponType::Cannon)    => "ui.weapon.cannon",
+        Some(WeaponType::Missile)   => "ui.weapon.missile",
+        Some(WeaponType::Phasers)   => "ui.weapon.phasers",
     }
 }
 
@@ -190,6 +191,7 @@ pub fn draw_builder_ui(
     mut player_res: ResMut<PlayerResources>,
     mut warbase_queues: Query<&mut ProductionQueue, With<Warbase>>,
     mut commands: Commands,
+    loc: Res<Localization>,
 ) -> Result {
     if !state.open {
         return Ok(());
@@ -200,14 +202,14 @@ pub fn draw_builder_ui(
     let mut close = false;
     let mut do_build = false;
 
-    egui::Window::new("Строительство робота")
+    egui::Window::new(loc.t("builder.title"))
         .id(egui::Id::new("builder_ui"))
         .resizable(false)
         .collapsible(false)
         .default_pos([440.0, 160.0])
         .show(ctx, |ui| {
             // ── Шасси ──────────────────────────────────────────────────────
-            ui.label(egui::RichText::new("Шасси").strong());
+            ui.label(egui::RichText::new(loc.t("builder.section.chassis")).strong());
             ui.horizontal(|ui| {
                 for ct in [
                     ChassisType::Wheels,
@@ -216,7 +218,7 @@ pub fn draw_builder_ui(
                     ChassisType::AntiGrav,
                 ] {
                     if ui
-                        .selectable_label(state.chassis == ct, chassis_label(ct))
+                        .selectable_label(state.chassis == ct, loc.t(chassis_label_key(ct)))
                         .clicked()
                     {
                         state.chassis = ct;
@@ -227,28 +229,32 @@ pub fn draw_builder_ui(
             ui.add_space(6.0);
 
             // ── Слоты оружия ───────────────────────────────────────────────
-            ui.label(egui::RichText::new("Оружие (до 3 слотов)").strong());
+            ui.label(egui::RichText::new(loc.t("builder.section.weapons")).strong());
             for i in 0..3 {
                 ui.horizontal(|ui| {
-                    ui.label(format!("Слот {}:", i + 1));
+                    ui.label(format!("{} {}:", loc.t("builder.slot_label"), i + 1));
+                    let selected_text = {
+                        let key = weapon_label_key(state.weapons[i]);
+                        if key == "---" { "---".to_string() } else { loc.t(key).to_string() }
+                    };
                     egui::ComboBox::from_id_salt(format!("weapon_slot_{i}"))
-                        .selected_text(weapon_label(state.weapons[i]))
+                        .selected_text(selected_text)
                         .show_ui(ui, |ui| {
                             ui.selectable_value(&mut state.weapons[i], None, "---");
                             ui.selectable_value(
                                 &mut state.weapons[i],
                                 Some(WeaponType::Cannon),
-                                "Пушка",
+                                loc.t("ui.weapon.cannon"),
                             );
                             ui.selectable_value(
                                 &mut state.weapons[i],
                                 Some(WeaponType::Missile),
-                                "Ракета",
+                                loc.t("ui.weapon.missile"),
                             );
                             ui.selectable_value(
                                 &mut state.weapons[i],
                                 Some(WeaponType::Phasers),
-                                "Фазеры",
+                                loc.t("ui.weapon.phasers"),
                             );
                         });
                 });
@@ -257,9 +263,9 @@ pub fn draw_builder_ui(
             ui.add_space(6.0);
 
             // ── Модули ─────────────────────────────────────────────────────
-            ui.label(egui::RichText::new("Модули").strong());
-            ui.checkbox(&mut state.has_electronics, "Электроника (+точность, +скор. огня, -время захвата)");
-            ui.checkbox(&mut state.has_nuclear, "Ядерный заряд (уничтожает всё в R=8)");
+            ui.label(egui::RichText::new(loc.t("builder.section.modules")).strong());
+            ui.checkbox(&mut state.has_electronics, loc.t("builder.module.electronics"));
+            ui.checkbox(&mut state.has_nuclear, loc.t("builder.module.nuclear"));
 
             ui.add_space(6.0);
             ui.separator();
@@ -280,14 +286,14 @@ pub fn draw_builder_ui(
             let build_cost = bp.cost(&registry);
 
             // ── Стоимость ──────────────────────────────────────────────────
-            ui.label(egui::RichText::new("Стоимость").strong());
+            ui.label(egui::RichText::new(loc.t("builder.section.cost")).strong());
             egui::Grid::new("cost_grid")
                 .num_columns(3)
                 .spacing([12.0, 2.0])
                 .show(ui, |ui| {
-                    ui.label("Ресурс");
-                    ui.label("Нужно");
-                    ui.label("Есть");
+                    ui.label(loc.t("builder.col.resource"));
+                    ui.label(loc.t("builder.col.need"));
+                    ui.label(loc.t("builder.col.have"));
                     ui.end_row();
 
                     for (rt, needed) in &costs {
@@ -298,7 +304,7 @@ pub fn draw_builder_ui(
                         } else {
                             egui::Color32::RED
                         };
-                        ui.label(resource_label(*rt));
+                        ui.label(loc.t(resource_label_key(*rt)));
                         ui.colored_label(color, format!("{}", needed));
                         ui.colored_label(color, format!("{}", available));
                         ui.end_row();
@@ -306,8 +312,10 @@ pub fn draw_builder_ui(
                 });
 
             ui.label(format!(
-                "Время постройки: {:.1} с",
-                build_cost.build_time
+                "{}: {:.1} {}",
+                loc.t("builder.time_label"),
+                build_cost.build_time,
+                loc.t("builder.unit.sec"),
             ));
 
             ui.add_space(6.0);
@@ -317,7 +325,7 @@ pub fn draw_builder_ui(
                 ui.colored_label(egui::Color32::YELLOW, format!("⚠ {e}"));
             }
             if !affordable && validation.is_ok() {
-                ui.colored_label(egui::Color32::RED, "Недостаточно ресурсов");
+                ui.colored_label(egui::Color32::RED, loc.t("builder.error.insufficient"));
             }
 
             ui.add_space(4.0);
@@ -326,12 +334,12 @@ pub fn draw_builder_ui(
             ui.horizontal(|ui| {
                 let can_build = validation.is_ok() && affordable;
                 if ui
-                    .add_enabled(can_build, egui::Button::new("Построить"))
+                    .add_enabled(can_build, egui::Button::new(loc.t("builder.btn.build")))
                     .clicked()
                 {
                     do_build = true;
                 }
-                if ui.button("Закрыть").clicked() {
+                if ui.button(loc.t("builder.btn.close")).clicked() {
                     close = true;
                 }
             });
@@ -366,7 +374,7 @@ pub fn draw_builder_ui(
             if let Ok(mut queue) = warbase_queues.get_mut(warbase_entity) {
                 queue.enqueue(bp, build_cost.build_time);
                 info!(
-                    "Робот добавлен в очередь (постройка {:.1}с)",
+                    "Robot queued (build time {:.1}s)",
                     build_cost.build_time
                 );
             }
