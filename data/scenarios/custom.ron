@@ -1,0 +1,5 @@
+(
+    name: "custom",
+    description: "",
+    map_path: "data/maps/custom.ron",
+)
