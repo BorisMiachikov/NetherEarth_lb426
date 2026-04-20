@@ -302,6 +302,49 @@ pub fn draw_editor_map_props(
             ui.add_space(8.0);
 
             ui.separator();
+            // --- Начальные ресурсы сценария ---
+            let ir_before = editor.initial_resources_enabled;
+            ui.checkbox(
+                &mut editor.initial_resources_enabled,
+                loc.t("editor.props.initial_resources"),
+            );
+            if editor.initial_resources_enabled != ir_before {
+                editor.dirty = true;
+            }
+            if editor.initial_resources_enabled {
+                ui.label(
+                    egui::RichText::new(loc.t("editor.props.initial_resources_hint"))
+                        .small()
+                        .color(egui::Color32::DARK_GRAY),
+                );
+                let r = &mut editor.initial_resources;
+                let mut changed = false;
+                for (value, key) in [
+                    (&mut r.general,     "ui.resource.general"),
+                    (&mut r.chassis,     "ui.resource.chassis"),
+                    (&mut r.cannon,      "ui.resource.cannon"),
+                    (&mut r.missile,     "ui.resource.missile"),
+                    (&mut r.phasers,     "ui.resource.phasers"),
+                    (&mut r.electronics, "ui.resource.electronics"),
+                    (&mut r.nuclear,     "ui.resource.nuclear"),
+                ] {
+                    ui.horizontal(|ui| {
+                        ui.label(loc.t(key));
+                        let resp = ui.add(
+                            egui::DragValue::new(value)
+                                .range(0..=99999)
+                                .speed(1.0),
+                        );
+                        if resp.changed() { changed = true; }
+                    });
+                }
+                if changed {
+                    editor.dirty = true;
+                }
+            }
+            ui.add_space(8.0);
+
+            ui.separator();
             ui.label(egui::RichText::new(loc.t("editor.props.stats")).small().color(egui::Color32::GRAY));
 
             let size = editor.map_size.value();

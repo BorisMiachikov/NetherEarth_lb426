@@ -1,9 +1,66 @@
 use bevy::prelude::*;
 
 use crate::{
+    economy::resource::ScenarioInitialResources,
     localization::Localization,
     map::loader::{CellTypeDef, FactoryDef, FactoryTypeDef, TeamDef, WarbaseDef},
 };
+
+// ---------------------------------------------------------------------------
+// Начальные ресурсы сценария (UI-форма)
+// ---------------------------------------------------------------------------
+
+/// UI-представление начальных ресурсов сценария. Все поля — числа (без Option),
+/// включение/выключение override'а управляется флагом в EditorState.
+#[derive(Debug, Clone, Copy)]
+pub struct InitialResourcesUi {
+    pub general:     i32,
+    pub chassis:     i32,
+    pub cannon:      i32,
+    pub missile:     i32,
+    pub phasers:     i32,
+    pub electronics: i32,
+    pub nuclear:     i32,
+}
+
+impl Default for InitialResourcesUi {
+    fn default() -> Self {
+        // Совпадает с PlayerResources::with_starting_values().
+        Self {
+            general: 50, chassis: 20, cannon: 15, missile: 10,
+            phasers: 10, electronics: 10, nuclear: 5,
+        }
+    }
+}
+
+impl InitialResourcesUi {
+    /// Конвертирует UI → ScenarioInitialResources (все поля Some).
+    pub fn to_scenario(self) -> ScenarioInitialResources {
+        ScenarioInitialResources {
+            general:     Some(self.general),
+            chassis:     Some(self.chassis),
+            cannon:      Some(self.cannon),
+            missile:     Some(self.missile),
+            phasers:     Some(self.phasers),
+            electronics: Some(self.electronics),
+            nuclear:     Some(self.nuclear),
+        }
+    }
+
+    /// Заполняет значения из сценария; None — оставляет default.
+    pub fn from_scenario(s: &ScenarioInitialResources) -> Self {
+        let d = Self::default();
+        Self {
+            general:     s.general.unwrap_or(d.general),
+            chassis:     s.chassis.unwrap_or(d.chassis),
+            cannon:      s.cannon.unwrap_or(d.cannon),
+            missile:     s.missile.unwrap_or(d.missile),
+            phasers:     s.phasers.unwrap_or(d.phasers),
+            electronics: s.electronics.unwrap_or(d.electronics),
+            nuclear:     s.nuclear.unwrap_or(d.nuclear),
+        }
+    }
+}
 
 // ---------------------------------------------------------------------------
 // Инструменты редактора
@@ -136,6 +193,10 @@ pub struct EditorState {
     /// Клетка под курсором (для предпросмотра).
     pub hovered_cell: Option<(u32, u32)>,
 
+    // --- Начальные ресурсы сценария ---
+    pub initial_resources_enabled: bool,
+    pub initial_resources: InitialResourcesUi,
+
     // --- Диалоги ---
     pub show_new_map_dialog: bool,
     pub show_open_dialog: bool,
@@ -173,6 +234,9 @@ impl Default for EditorState {
 
             hovered_cell: None,
 
+            initial_resources_enabled: false,
+            initial_resources: InitialResourcesUi::default(),
+
             show_new_map_dialog: false,
             show_open_dialog: false,
             show_validation_error: None,
@@ -193,6 +257,8 @@ impl EditorState {
         self.redo_stack.clear();
         self.dirty = false;
         self.show_new_map_dialog = false;
+        self.initial_resources_enabled = false;
+        self.initial_resources = InitialResourcesUi::default();
     }
 
     /// Применяет действие и кладёт его в undo-стек.

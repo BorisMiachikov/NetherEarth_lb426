@@ -177,6 +177,8 @@
     "editor.props.valid": "✓ Карта валидна",
     "editor.props.map_size_label": "Размер карты",
     "editor.props.size_hint": "(Смена — через 'Новая карта')",
+    "editor.props.initial_resources": "Начальные ресурсы",
+    "editor.props.initial_resources_hint": "Переопределяет стартовые запасы игрока",
 
     // Редактор — диалоги
     "editor.dialog.new_map": "Новая карта",

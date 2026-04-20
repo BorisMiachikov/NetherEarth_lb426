@@ -4,7 +4,7 @@ use crate::map::loader::{
 use crate::map::grid::{CellType, MapGrid};
 use crate::ui::menu::ScenarioDef;
 
-use super::state::{EditorState, MapSize};
+use super::state::{EditorState, InitialResourcesUi, MapSize};
 use super::tools::ct_to_cell_type_def;
 
 /// Строит `MapData` из текущего состояния редактора + MapGrid.
@@ -67,16 +67,58 @@ fn save_scenario(editor: &EditorState) -> Result<(), String> {
         name: editor.map_name.clone(),
         description: editor.map_description.clone(),
         map_path: format!("data/maps/{}.ron", editor.file_name),
-        initial_resources: None,
+        initial_resources: if editor.initial_resources_enabled {
+            Some(editor.initial_resources.to_scenario())
+        } else {
+            None
+        },
     };
-    let ron_str = format!(
-        "(\n    name: {:?},\n    description: {:?},\n    map_path: {:?},\n)\n",
-        def.name, def.description, def.map_path
-    );
+
+    let mut ron_str = String::from("(\n");
+    ron_str.push_str(&format!("    name: {:?},\n", def.name));
+    ron_str.push_str(&format!("    description: {:?},\n", def.description));
+    ron_str.push_str(&format!("    map_path: {:?},\n", def.map_path));
+    if editor.initial_resources_enabled {
+        let r = &editor.initial_resources;
+        ron_str.push_str("    initial_resources: Some((\n");
+        ron_str.push_str(&format!("        general:     {},\n", r.general));
+        ron_str.push_str(&format!("        chassis:     {},\n", r.chassis));
+        ron_str.push_str(&format!("        cannon:      {},\n", r.cannon));
+        ron_str.push_str(&format!("        missile:     {},\n", r.missile));
+        ron_str.push_str(&format!("        phasers:     {},\n", r.phasers));
+        ron_str.push_str(&format!("        electronics: {},\n", r.electronics));
+        ron_str.push_str(&format!("        nuclear:     {},\n", r.nuclear));
+        ron_str.push_str("    )),\n");
+    }
+    ron_str.push_str(")\n");
+
     let _ = std::fs::create_dir_all("data/scenarios");
     let path = format!("data/scenarios/{}.ron", editor.file_name);
     std::fs::write(&path, ron_str).map_err(|e| format!("Write error (scenario) {path}: {e}"))?;
     Ok(())
+}
+
+/// Пытается загрузить `data/scenarios/{stem}.ron` и обновить поля редактора.
+/// Если файл отсутствует или битый — оставляет значения по умолчанию, не возвращая ошибку.
+fn load_scenario_into_editor(file_stem: &str, editor: &mut EditorState) {
+    let path = format!("data/scenarios/{file_stem}.ron");
+    let Ok(content) = std::fs::read_to_string(&path) else { return; };
+    let Ok(def) = ron::from_str::<ScenarioDef>(&content) else {
+        bevy::prelude::warn!("Не удалось распарсить сценарий {path}");
+        return;
+    };
+    editor.map_name = def.name;
+    editor.map_description = def.description;
+    match def.initial_resources {
+        Some(ir) => {
+            editor.initial_resources_enabled = true;
+            editor.initial_resources = InitialResourcesUi::from_scenario(&ir);
+        }
+        None => {
+            editor.initial_resources_enabled = false;
+            editor.initial_resources = InitialResourcesUi::default();
+        }
+    }
 }
 
 fn serialize_map_data_ron(data: &MapData) -> String {
@@ -146,11 +188,18 @@ pub fn load_map_into_editor(
 
     editor.file_name = file_stem.to_owned();
     editor.map_name = file_stem.to_owned();
+    editor.map_description.clear();
+    editor.initial_resources_enabled = false;
+    editor.initial_resources = InitialResourcesUi::default();
     editor.player_spawn = spawn.player_spawn;
     editor.factories = structures.factories;
     editor.warbases = structures.warbases;
     editor.undo_stack.clear();
     editor.redo_stack.clear();
     editor.dirty = false;
+
+    // Сценарий опционален — перекрывает map_name/description/initial_resources.
+    load_scenario_into_editor(file_stem, editor);
+
     Ok(())
 }

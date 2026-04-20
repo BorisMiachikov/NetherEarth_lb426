@@ -177,6 +177,8 @@
     "editor.props.valid": "✓ Map is valid",
     "editor.props.map_size_label": "Map Size",
     "editor.props.size_hint": "(Change via 'New Map')",
+    "editor.props.initial_resources": "Initial resources",
+    "editor.props.initial_resources_hint": "Overrides player starting stockpiles",
 
     // Editor — dialogs
     "editor.dialog.new_map": "New Map",
